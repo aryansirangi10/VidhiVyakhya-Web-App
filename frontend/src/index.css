@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
+  }
+
+  @keyframes pulse-highlight {
+    0% {
+      background-color: rgba(67, 56, 202, 0.15);
+    }
+    50% {
+      background-color: rgba(67, 56, 202, 0.4);
+    }
+    100% {
+      background-color: rgba(67, 56, 202, 0.2);
+    }
+  }
+
+  .highlight-pulse {
+    animation: pulse-highlight 2s infinite ease-in-out;
+  }
+}
+
+/* Custom Scrollbar styling for a clean minimalist look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

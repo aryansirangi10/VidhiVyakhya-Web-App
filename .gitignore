@@ -1,0 +1,11 @@
+.env
+node_modules
+__pycache__
+*.pyc
+.DS_Store
+dist
+build
+backend/uploads/*
+!backend/uploads/.gitkeep
+postgres_data/
+db_data/

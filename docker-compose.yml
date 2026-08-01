@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: vidhi_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vidhi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vidhipass}
+      POSTGRES_DB: ${POSTGRES_DB:-vidhibills}
+    ports:
+      - "5435:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vidhi} -d ${POSTGRES_DB:-vidhibills}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vidhi_backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-vidhi}:${POSTGRES_PASSWORD:-vidhipass}@db:5432/${POSTGRES_DB:-vidhibills}
+      JWT_SECRET: ${JWT_SECRET:-supersecretjwtkeyforvidhibillsprotection}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-c3VwZXJzZWNyZXRlbmNyeXB0aW9ua2V5MzJieXRlczE=}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vidhi_frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  backend_uploads:

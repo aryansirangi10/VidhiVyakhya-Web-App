@@ -1,7 +1,10 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import Spinner from "../../components/ui/Spinner";
-import Navbar from "../../components/layout/Navbar";
+import Sidebar from "../../components/layout/Sidebar";
+import Topbar from "../../components/layout/Topbar";
+import CommandPalette from "../../components/layout/CommandPalette";
+import { ToastProvider } from "../providers/ToastContext";
 
 const LandingPage = lazy(() => import("../../pages/LandingPage"));
 const BillsPage = lazy(() => import("../../features/bills/pages/BillsPage"));
@@ -13,58 +16,65 @@ const LoginForm = lazy(() => import("../../features/auth/components/LoginForm/Lo
 const RegisterForm = lazy(() => import("../../features/auth/components/RegisterForm/RegisterForm"));
 
 export function AppRouter() {
+  const [commandOpen, setCommandOpen] = useState(false);
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <Navbar />
-      <div className="pt-20 flex-1">
-        <Suspense
-          fallback={
-            <div className="flex h-96 w-full items-center justify-center">
-              <Spinner size="lg" />
-            </div>
-          }
-        >
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/bills" element={<BillsPage />} />
-            <Route path="/bills/:id" element={<BillDetailPage />} />
-            <Route path="/calculator" element={<CalculatorPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route
-              path="/assistant"
-              element={
-                <div className="py-8 px-4">
-                  <AssistantPanel />
+    <ToastProvider>
+      <div className="flex h-screen w-screen overflow-hidden bg-slate-50">
+        {/* SIDEBAR */}
+        <Sidebar />
+
+        {/* MAIN WORKSPACE AREA */}
+        <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+          <Topbar onOpenCommand={() => setCommandOpen(true)} />
+
+          <main className="flex-1 overflow-y-auto p-6 scrollbar-thin">
+            <Suspense
+              fallback={
+                <div className="flex h-96 w-full items-center justify-center">
+                  <Spinner size="lg" />
                 </div>
               }
-            />
-            <Route
-              path="/login"
-              element={
-                <div className="py-16 px-4">
-                  <div className="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-4">
-                    <h2 className="text-2xl font-bold text-slate-900 text-center">Sign In</h2>
-                    <LoginForm />
-                  </div>
-                </div>
-              }
-            />
-            <Route
-              path="/register"
-              element={
-                <div className="py-16 px-4">
-                  <div className="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-4">
-                    <h2 className="text-2xl font-bold text-slate-900 text-center">Create Free Account</h2>
-                    <RegisterForm />
-                  </div>
-                </div>
-              }
-            />
-            <Route path="*" element={<LandingPage />} />
-          </Routes>
-        </Suspense>
+            >
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/bills" element={<BillsPage />} />
+                <Route path="/bills/:id" element={<BillDetailPage />} />
+                <Route path="/calculator" element={<CalculatorPage />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/assistant" element={<AssistantPanel />} />
+                <Route
+                  path="/login"
+                  element={
+                    <div className="py-16 px-4">
+                      <div className="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-4">
+                        <h2 className="text-2xl font-bold text-slate-900 text-center font-mono">Sign In to Workspace</h2>
+                        <LoginForm />
+                      </div>
+                    </div>
+                  }
+                />
+                <Route
+                  path="/register"
+                  element={
+                    <div className="py-16 px-4">
+                      <div className="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-4">
+                        <h2 className="text-2xl font-bold text-slate-900 text-center font-mono">Create Free Account</h2>
+                        <RegisterForm />
+                      </div>
+                    </div>
+                  }
+                />
+                <Route path="*" element={<LandingPage />} />
+              </Routes>
+            </Suspense>
+          </main>
+        </div>
+
+        {/* GLOBAL COMMAND PALETTE OVERLAY */}
+        <CommandPalette isOpen={commandOpen} onClose={() => setCommandOpen(false)} />
       </div>
-    </div>
+    </ToastProvider>
   );
 }
 

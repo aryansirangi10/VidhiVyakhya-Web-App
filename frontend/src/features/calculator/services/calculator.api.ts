@@ -1,5 +1,5 @@
 import { UserProfile, ImpactResult } from "../types/calculator";
-import { api } from "@/services/api";
+import { api } from "../../../services/api";
 
 export const calculatorApi = {
   async calculateImpact(profile: UserProfile, billId = 1): Promise<ImpactResult> {

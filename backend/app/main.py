@@ -8,6 +8,7 @@ from app.db.database import engine
 from app.db.base import Base
 from app.api import health
 from app.routes import auth, bills, profiles, calculations
+from app.auth import auth_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,6 +31,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(auth_router)
 app.include_router(bills.router)
 app.include_router(profiles.profiles_router)
 app.include_router(profiles.history_router)

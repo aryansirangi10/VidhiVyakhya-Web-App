@@ -9,7 +9,7 @@ type Variant =
   | "danger"
   | "success";
 
-type Size = "sm" | "md" | "lg";
+type Size = "xs" | "sm" | "md" | "lg";
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -30,6 +30,7 @@ const variantStyles: Record<Variant, string> = {
 };
 
 const sizeStyles: Record<Size, string> = {
+  xs: "px-2 py-1 text-xs rounded-md",
   sm: "px-3 py-1.5 text-xs rounded-lg",
   md: "px-4 py-2 text-sm rounded-xl",
   lg: "px-6 py-3 text-base rounded-xl font-semibold",

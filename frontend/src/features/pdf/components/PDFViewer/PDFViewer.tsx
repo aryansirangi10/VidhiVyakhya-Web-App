@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { PDFProvider, usePDFContext } from "../../Context/PDFContext";
+import { PDFProvider, usePDFContext } from "../../context/PDFContext";
 import Toolbar from "../Toolbar/Toolbar";
 import PDFCanvas from "./PDFCanvas";
 import PDFEmpty from "./PDFEmpty";
@@ -11,7 +11,6 @@ export interface PDFViewerProps {
 function InnerPDFViewer({ url }: PDFViewerProps) {
   const { setPage, nextPage, prevPage, zoomIn, zoomOut, totalPages } = usePDFContext();
 
-  // Keyboard Shortcuts: ← (prev), → (next), Ctrl+ (zoom in), Ctrl- (zoom out), Home (first), End (last)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (document.activeElement?.tagName === "INPUT") return;

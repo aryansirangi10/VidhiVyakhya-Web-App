@@ -5,7 +5,7 @@ import PageNavigator from "./PageNavigator";
 import ZoomControls from "./ZoomControls";
 import RotateButton from "./RotateButton";
 import DownloadButton from "./DownloadButton";
-import { usePDFContext } from "../../Context/PDFContext";
+import { usePDFContext } from "../../context/PDFContext";
 
 export function Toolbar() {
   const { isFullscreen, toggleFullscreen } = usePDFContext();

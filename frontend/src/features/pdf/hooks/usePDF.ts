@@ -1,4 +1,4 @@
-import { usePDFContext } from "../Context/PDFContext";
+import { usePDFContext } from "../context/PDFContext";
 
 export function usePDF() {
   const { document, loading, error, setDocument, setLoading, setError } = usePDFContext();

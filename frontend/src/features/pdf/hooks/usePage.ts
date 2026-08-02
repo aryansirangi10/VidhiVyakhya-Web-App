@@ -1,4 +1,4 @@
-import { usePDFContext } from "../Context/PDFContext";
+import { usePDFContext } from "../context/PDFContext";
 
 export function usePage() {
   const { currentPage, totalPages, setPage, nextPage, prevPage, setTotalPages } = usePDFContext();

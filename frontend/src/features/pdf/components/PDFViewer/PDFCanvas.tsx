@@ -1,10 +1,9 @@
 import React from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import { usePDFContext } from "../../Context/PDFContext";
+import { usePDFContext } from "../../context/PDFContext";
 import PDFLoading from "./PDFLoading";
 import PDFError from "./PDFError";
 
-// Set worker URL for react-pdf
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export function PDFCanvas({ url }: { url: string }) {

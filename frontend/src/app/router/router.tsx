@@ -14,6 +14,8 @@ const DashboardPage = lazy(() => import("../../features/dashboard/components/Das
 const AssistantPanel = lazy(() => import("../../features/assistant/components/AssistantPanel"));
 const LoginForm = lazy(() => import("../../features/auth/components/LoginForm/LoginForm"));
 const RegisterForm = lazy(() => import("../../features/auth/components/RegisterForm/RegisterForm"));
+const OnboardingPage = lazy(() => import("../../features/auth/pages/OnboardingPage"));
+const SettingsPage = lazy(() => import("../../features/auth/pages/SettingsPage"));
 
 export function AppRouter() {
   const [commandOpen, setCommandOpen] = useState(false);
@@ -43,6 +45,8 @@ export function AppRouter() {
                 <Route path="/calculator" element={<CalculatorPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/assistant" element={<AssistantPanel />} />
+                <Route path="/onboarding" element={<OnboardingPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route
                   path="/login"
                   element={

@@ -8,10 +8,11 @@ export interface SelectOption {
 }
 
 export interface SelectProps
-  extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "size"> {
   label?: string;
   helperText?: string;
   error?: string;
+  size?: "sm" | "md" | "lg";
   options: SelectOption[];
 }
 
@@ -21,14 +22,18 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       label,
       helperText,
       error,
+      size = "md",
       options,
       className,
       ...props
     },
     ref
   ) => {
+    const sizePadding =
+      size === "sm" ? "px-3 py-1.5 text-xs rounded-lg" : size === "lg" ? "px-5 py-4 text-base rounded-xl" : "px-4 py-3 text-sm rounded-xl";
+
     return (
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {label && (
           <label className="block text-sm font-medium text-slate-700">
             {label}
@@ -39,7 +44,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           <select
             ref={ref}
             className={cn(
-              "w-full appearance-none rounded-xl border bg-white px-4 py-3 pr-10 outline-none transition-all",
+              "w-full appearance-none border bg-white pr-8 outline-none transition-all",
+              sizePadding,
               error
                 ? "border-red-500 focus:ring-2 focus:ring-red-200"
                 : "border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100",
@@ -55,8 +61,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           </select>
 
           <ChevronDown
-            size={18}
-            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+            size={16}
+            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
           />
         </div>
 

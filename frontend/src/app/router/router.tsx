@@ -12,10 +12,12 @@ const BillDetailPage = lazy(() => import("../../features/bills/pages/BillDetailP
 const CalculatorPage = lazy(() => import("../../features/calculator/components/CalculatorPage"));
 const DashboardPage = lazy(() => import("../../features/dashboard/components/DashboardPage"));
 const AssistantPanel = lazy(() => import("../../features/assistant/components/AssistantPanel"));
-const LoginForm = lazy(() => import("../../features/auth/components/LoginForm/LoginForm"));
-const RegisterForm = lazy(() => import("../../features/auth/components/RegisterForm/RegisterForm"));
 const OnboardingPage = lazy(() => import("../../features/auth/pages/OnboardingPage"));
 const SettingsPage = lazy(() => import("../../features/auth/pages/SettingsPage"));
+const IntelligenceHome = lazy(() => import("../../features/intelligence/pages/IntelligenceHome"));
+const CompareBillsPage = lazy(() => import("../../features/intelligence/pages/CompareBillsPage"));
+const LoginForm = lazy(() => import("../../features/auth/components/LoginForm/LoginForm"));
+const RegisterForm = lazy(() => import("../../features/auth/components/RegisterForm/RegisterForm"));
 
 export function AppRouter() {
   const [commandOpen, setCommandOpen] = useState(false);
@@ -42,6 +44,9 @@ export function AppRouter() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/bills" element={<BillsPage />} />
                 <Route path="/bills/:id" element={<BillDetailPage />} />
+                <Route path="/intelligence" element={<IntelligenceHome />} />
+                <Route path="/documents" element={<IntelligenceHome />} />
+                <Route path="/compare" element={<CompareBillsPage />} />
                 <Route path="/calculator" element={<CalculatorPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/assistant" element={<AssistantPanel />} />

@@ -3,6 +3,7 @@ import { Document, Page, pdfjs } from "react-pdf";
 import { usePDFContext } from "../../context/PDFContext";
 import PDFLoading from "./PDFLoading";
 import PDFError from "./PDFError";
+import HighlightLayer from "../../highlight/components/HighlightLayer";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -25,14 +26,17 @@ export function PDFCanvas({ url }: { url: string }) {
         error={<PDFError message="Failed to load PDF document from specified URL." />}
         className="shadow-2xl rounded-2xl overflow-hidden border border-slate-200"
       >
-        <Page
-          pageNumber={currentPage}
-          scale={zoom}
-          rotate={rotation}
-          renderTextLayer={true}
-          renderAnnotationLayer={false}
-          className="bg-white"
-        />
+        <div className="relative">
+          <Page
+            pageNumber={currentPage}
+            scale={zoom}
+            rotate={rotation}
+            renderTextLayer={true}
+            renderAnnotationLayer={false}
+            className="bg-white"
+          />
+          <HighlightLayer />
+        </div>
       </Document>
     </div>
   );

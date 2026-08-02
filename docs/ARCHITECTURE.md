@@ -1,35 +1,37 @@
-# VidhiVyakhya 2.0 System Architecture
+# VidhiVyakhya 2.0 Enterprise Architecture Guide
 
-## Architecture Overview
+## System Overview
 
-VidhiVyakhya 2.0 follows **Clean Architecture + Feature-Driven Design**.
+VidhiVyakhya is a production-grade statutory legal intelligence platform built with Clean Architecture:
 
 ```
-HTTP Request ──► API Router ──► Service Layer ──► Repository Layer ──► Database
+                                    Internet
+                                        │
+                                        ▼
+                              Cloudflare CDN + WAF
+                                        │
+                                        ▼
+                                Nginx Reverse Proxy
+                                        │
+                 ┌──────────────────────┼──────────────────────┐
+                 ▼                      ▼                      ▼
+          React Frontend          FastAPI Backend         Admin Portal
+                 │                      │                      │
+                 └──────────────┬───────┴──────────────┬───────┘
+                                ▼                      ▼
+                           Redis Cache            Celery Workers
+                                │                      │
+                    ┌───────────┴────────────┐
+                    ▼                        ▼
+              PostgreSQL + pgvector      Object Storage (PDFs)
 ```
 
-## Directory Structure
+## Layer Architecture
 
-### Frontend (`frontend/src/`)
-- `app/`: Global application bootstrap (providers, theme, router, env config).
-- `shared/`: Reusable components (Button, Card, Badge, Input, etc.), hooks, types, utils.
-- `features/`: Isolated feature modules (`landing`, `bills`, `calculator`, `dashboard`, `auth`, `glossary`, `pdf`, `history`, `profiles`).
-- `pages/`: Top-level route pages.
-
-### Backend (`backend/app/`)
-- `api/v1/`: Versioned API controllers.
-- `services/`: Core business logic services.
-- `repositories/`: Database abstraction queries.
-- `engine/`: 7-stage rule evaluation and citation pipeline.
-- `models/`: SQLAlchemy 2.0 ORM entities.
-- `schemas/`: Pydantic v2 validation models.
-- `security/`: AES-256-CBC encryption, JWT, password hashing.
-- `core/`: Application settings, structured logging.
-- `db/`: Database session, migrations, pgvector.
-- `workers/`: Background Redis & Celery tasks.
-
-## Quality Standards
-- Strict TypeScript mode without `any`.
-- SOLID & DRY principles.
-- 100% accessible WCAG-compliant design system primitives.
-- Isolated feature modules with index export entry points.
+1. **Presentation Layer (`frontend/src/features/`)**: Feature-first domain modules (`bills`, `pdf`, `calculator`, `auth`, `dashboard`, `assistant`).
+2. **API Gateway (`backend/app/api/v1/`)**: Validated FastAPI v1 REST routers with rate limiting and OpenAPI documentation.
+3. **Intelligence Layer (`backend/app/engine/` & `backend/app/ai/`)**:
+   - PDF Parser & Clause Splitter
+   - Deterministic Statutory Tax Calculator (`tax_engine.py`, `surcharge.py`, `cess.py`, `rebate.py`)
+   - 384-dim Vector Similarity Search & Grounded AI Assistant with Guardrail Validation
+4. **Data Layer (`PostgreSQL 15` + `pgvector` + `Redis 7.2`)**: Encrypted profile storage (AES-256 GCM) and high-throughput Redis caching.

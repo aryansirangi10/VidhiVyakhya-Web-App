@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Lock, Mail, ArrowRight } from "lucide-react";
 import Button from "../../../../components/ui/Button";
 import Input from "../../../../components/ui/Input";
@@ -8,11 +9,16 @@ export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { login, isLoading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await login(email, password);
-    if (onSuccess) onSuccess();
+    if (onSuccess) {
+      onSuccess();
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   return (

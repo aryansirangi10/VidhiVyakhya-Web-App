@@ -1,25 +1,45 @@
 import React from "react";
 import { cn } from "../../utils/cn";
 
+export type CardVariant =
+  | "default"
+  | "interactive"
+  | "glass"
+  | "gradient"
+  | "bordered"
+  | "elevated";
+
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   hover?: boolean;
   hoverable?: boolean;
+  variant?: CardVariant;
 }
+
+const variantStyles: Record<CardVariant, string> = {
+  default: "bg-white border border-slate-200 shadow-sm",
+  interactive: "bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 cursor-pointer transition-all",
+  glass: "bg-white/80 backdrop-blur-md border border-white/20 shadow-md",
+  gradient: "bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-900/50 shadow-xl",
+  bordered: "bg-white border-2 border-slate-200 shadow-none",
+  elevated: "bg-white border border-slate-100 shadow-xl",
+};
 
 export function Card({
   className,
   hover = false,
   hoverable,
+  variant = "default",
   children,
   ...props
 }: CardProps) {
-  const isHover = hoverable !== undefined ? hoverable : hover;
+  const isHover = hoverable !== undefined ? hoverable : (hover || variant === "interactive");
 
   return (
     <div
       className={cn(
-        "rounded-2xl border border-slate-200 bg-white shadow-sm transition-all",
-        isHover && "hover:shadow-md hover:-translate-y-1 hover:border-slate-300",
+        "rounded-2xl transition-all duration-200 overflow-hidden",
+        variantStyles[variant],
+        isHover && "hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300 cursor-pointer",
         className
       )}
       {...props}

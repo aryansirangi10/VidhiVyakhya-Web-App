@@ -3,6 +3,8 @@ import { Routes, Route } from "react-router-dom";
 import Spinner from "../../components/ui/Spinner";
 
 const LandingPage = lazy(() => import("../../pages/LandingPage"));
+const BillsPage = lazy(() => import("../../features/bills/pages/BillsPage"));
+const BillDetailPage = lazy(() => import("../../features/bills/pages/BillDetailPage"));
 
 function LazyPage({ title }: { title: string }) {
   return (
@@ -26,7 +28,8 @@ export function AppRouter() {
     >
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/bills" element={<LazyPage title="Bill Explorer" />} />
+        <Route path="/bills" element={<BillsPage />} />
+        <Route path="/bills/:id" element={<BillDetailPage />} />
         <Route path="/dashboard" element={<LazyPage title="Dashboard" />} />
         <Route path="/profile" element={<LazyPage title="User Profile" />} />
         <Route path="/calculator" element={<LazyPage title="Impact Calculator" />} />

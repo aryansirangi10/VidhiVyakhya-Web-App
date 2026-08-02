@@ -2,10 +2,11 @@ import React, { forwardRef } from "react";
 import { cn } from "../../utils/cn";
 
 export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
   label?: string;
   error?: string;
   helperText?: string;
+  size?: "sm" | "md" | "lg";
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
 }
@@ -16,6 +17,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       label,
       error,
       helperText,
+      size = "md",
       leftIcon,
       rightIcon,
       className,
@@ -23,8 +25,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     },
     ref
   ) => {
+    const sizePadding =
+      size === "sm" ? "px-2.5 py-1 text-xs rounded-lg" : size === "lg" ? "px-4 py-3 text-base rounded-xl" : "px-3 py-2 text-sm rounded-xl";
+
     return (
-      <div className="w-full space-y-2">
+      <div className="w-full space-y-1.5">
         {label && (
           <label className="block text-sm font-medium text-slate-700">
             {label}
@@ -33,7 +38,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
         <div
           className={cn(
-            "flex items-center rounded-xl border bg-white px-3 py-2 transition-all",
+            "flex items-center border bg-white transition-all",
+            sizePadding,
             error
               ? "border-red-500 focus-within:ring-2 focus-within:ring-red-200"
               : "border-slate-300 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100",

@@ -5,6 +5,8 @@ import PageNavigator from "./PageNavigator";
 import ZoomControls from "./ZoomControls";
 import RotateButton from "./RotateButton";
 import DownloadButton from "./DownloadButton";
+import { PDFSearchBar } from "../Search/PDFSearchBar";
+import { GlossaryDrawer } from "../Glossary/GlossaryDrawer";
 import { usePDFContext } from "../../context/PDFContext";
 
 export function Toolbar() {
@@ -16,14 +18,18 @@ export function Toolbar() {
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white p-3 border border-slate-200 shadow-sm text-slate-700">
-      {/* LEFT: PAGE NAVIGATOR */}
-      <PageNavigator />
+      {/* LEFT: PAGE NAVIGATOR & SEARCH */}
+      <div className="flex items-center gap-3">
+        <PageNavigator />
+        <PDFSearchBar />
+      </div>
 
       {/* CENTER: ZOOM CONTROLS */}
       <ZoomControls />
 
-      {/* RIGHT: ACTIONS */}
+      {/* RIGHT: GLOSSARY & ACTIONS */}
       <div className="flex items-center gap-2">
+        <GlossaryDrawer />
         <RotateButton />
         <Button size="xs" variant="ghost" onClick={handlePrint} title="Print PDF">
           <Printer size={16} />

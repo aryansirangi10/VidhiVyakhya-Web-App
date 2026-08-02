@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VidhiVyakhya (विधिव्याख्या) — Law, Decoded Personally</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f4f8',
+              100: '#d9e2ec',
+              200: '#bccadc',
+              300: '#9fb3c8',
+              400: '#829ab1',
+              500: '#627d98',
+              600: '#486581',
+              700: '#334e68',
+              800: '#243b53',
+              900: '#102a43',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel Standalone CDN -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // --- SEEDED BILLS DATA ---
+    const BILLS_DATA = [
+      {
+        id: 1,
+        title: "Finance Bill 2024",
+        bill_number: "Bill No. 78 of 2024",
+        ministry: "Ministry of Finance",
+        category: "Income Tax",
+        reading_time: 4,
+        pages: 412,
+        status: "Implemented",
+        summary: "Revises tax slabs and increases the standard deduction to ₹75,000 for salaried employees under the new tax regime.",
+        timeline: [
+          { stage: "Introduced", completed: true, date: "2024-07-23" },
+          { stage: "Lok Sabha", completed: true, date: "2024-08-07" },
+          { stage: "Rajya Sabha", completed: true, date: "2024-08-09" },
+          { stage: "President Assent", completed: true, date: "2024-08-16" },
+          { stage: "Implemented", completed: true, date: "2025-04-01" }
+        ],
+        rules: [
+          {
+            id: 1,
+            clause_number: "Clause 4",
+            clause_text: "In section 115BAC of the Income-tax Act, in sub-section (2), in clause (ii), the standard deduction is raised from fifty thousand rupees to seventy-five thousand rupees for salaried employees.",
+            rule_type: "standard_deduction",
+            confidence: 0.98,
+            reviewed: true,
+            reviewed_by: "Senior Tax Auditor"
+          },
+          {
+            id: 2,
+            clause_number: "Clause 3",
+            clause_text: "Clause 3: Amendment of section 115BAC. Slabs adjusted: Up to 3L Nil, 3L-7L 5%, 7L-10L 10%, 10L-12L 15%, 12L-15L 20%, Above 15L 30%.",
+            rule_type: "tax_slab",
+            confidence: 0.99,
+            reviewed: true,
+            reviewed_by: "Senior Tax Auditor"
+          }
+        ]
+      },
+      {
+        id: 2,
+        title: "DPDP Act 2023 (Data Protection)",
+        bill_number: "Act No. 22 of 2023",
+        ministry: "Ministry of Electronics & IT",
+        category: "Data Privacy",
+        reading_time: 6,
+        pages: 48,
+        status: "Implemented",
+        summary: "Sets personal data protection obligations and mandates penalties up to ₹250 Cr for compliance failures.",
+        timeline: [
+          { stage: "Introduced", completed: true, date: "2023-08-03" },
+          { stage: "Lok Sabha", completed: true, date: "2023-08-07" },
+          { stage: "Rajya Sabha", completed: true, date: "2023-08-09" },
+          { stage: "President Assent", completed: true, date: "2023-08-11" },
+          { stage: "Implemented", completed: true, date: "2024-01-01" }
+        ],
+        rules: [
+          {
+            id: 3,
+            clause_number: "Section 8",
+            clause_text: "A Data Fiduciary shall implement appropriate technical and organizational measures to ensure compliance.",
+            rule_type: "data_compliance",
+            confidence: 0.95,
+            reviewed: true,
+            reviewed_by: "Legal Counsel"
+          }
+        ]
+      },
+      {
+        id: 3,
+        title: "Budget 2024 (Capital Gains Amendment)",
+        bill_number: "Bill No. 80 of 2024",
+        ministry: "Ministry of Finance",
+        category: "Capital Gains",
+        reading_time: 3,
+        pages: 64,
+        status: "Implemented",
+        summary: "Increases standard Equity Long-Term Capital Gains (LTCG) tax rate to 12.5% and expands exemption limit to ₹1.25 Lakhs.",
+        timeline: [
+          { stage: "Introduced", completed: true, date: "2024-07-23" },
+          { stage: "Lok Sabha", completed: true, date: "2024-08-07" },
+          { stage: "Rajya Sabha", completed: true, date: "2024-08-09" },
+          { stage: "President Assent", completed: true, date: "2024-08-16" },
+          { stage: "Implemented", completed: true, date: "2024-07-23" }
+        ],
+        rules: [
+          {
+            id: 4,
+            clause_number: "Clause 22",
+            clause_text: "Tax rate on long-term capital gains from equity shares increased from 10% to 12.5%. Exemption limit raised to ₹1.25 Lakhs.",
+            rule_type: "capital_gains",
+            confidence: 0.97,
+            reviewed: true,
+            reviewed_by: "Senior Tax Auditor"
+          }
+        ]
+      }
+    ];
+
+    // --- GLOSSARY DICTIONARY ---
+    const GLOSSARY = {
+      "Standard Deduction": "A flat deduction allowed from gross salary income before computing taxable income.",
+      "Assessment Year": "The year in which the income earned in the previous financial year is assessed and taxed.",
+      "Section 115BAC": "Special tax regime providing lower tax rates for individuals not claiming specified exemptions/deductions.",
+      "LTCG": "Long-Term Capital Gains. Profits earned on sale of capital assets held beyond specified holding periods.",
+      "Cess": "An additional tax levied by the government for specific public health and education purposes (4%)."
+    };
+
+    // --- TAX ENGINE CALCULATIONS ---
+    function calculateTaxNewRegimeOldSlabs(taxableIncome) {
+      let tax = 0;
+      if (taxableIncome <= 300000) return 0;
+      if (taxableIncome > 300000) tax += Math.min(300000, taxableIncome - 300000) * 0.05;
+      if (taxableIncome > 600000) tax += Math.min(300000, taxableIncome - 600000) * 0.10;
+      if (taxableIncome > 900000) tax += Math.min(300000, taxableIncome - 900000) * 0.15;
+      if (taxableIncome > 1200000) tax += Math.min(300000, taxableIncome - 1200000) * 0.20;
+      if (taxableIncome > 1500000) tax += (taxableIncome - 1500000) * 0.30;
+      return tax;
+    }
+
+    function calculateTaxNewRegimeRevisedSlabs(taxableIncome) {
+      let tax = 0;
+      if (taxableIncome <= 300000) return 0;
+      if (taxableIncome > 300000) tax += Math.min(400000, taxableIncome - 300000) * 0.05;
+      if (taxableIncome > 700000) tax += Math.min(300000, taxableIncome - 700000) * 0.10;
+      if (taxableIncome > 1000000) tax += Math.min(2000000, taxableIncome - 1000000) * 0.15;
+      if (taxableIncome > 1200000) tax += Math.min(300000, taxableIncome - 1200000) * 0.20;
+      if (taxableIncome > 1500000) tax += (taxableIncome - 1500000) * 0.30;
+      return tax;
+    }
+
+    function evaluateImpact(bill, profile) {
+      const { annual_income, employment, tax_regime, equity_ltcg = 0 } = profile;
+      let total_impact = 0;
+      let triggered_rules = [];
+      let explanation = "";
+
+      if (bill.id === 1 && tax_regime === 'new') {
+        const isSalaried = employment === 'salaried';
+        
+        let stdDeductionSavings = 0;
+        if (isSalaried) {
+          const marginalRate = annual_income > 1500000 ? 0.30 : annual_income > 1200000 ? 0.20 : annual_income > 1000000 ? 0.15 : annual_income > 700000 ? 0.10 : 0.05;
+          stdDeductionSavings = 25000 * marginalRate * 1.04;
+          total_impact += stdDeductionSavings;
+
+          triggered_rules.push({
+            ...bill.rules[0],
+            impact: stdDeductionSavings,
+            explanation: `Increased Standard Deduction from ₹50,000 to ₹75,000 saves ₹${Math.round(stdDeductionSavings).toLocaleString('en-IN')}.`
+          });
+        }
+
+        const oldTaxable = Math.max(0, annual_income - (isSalaried ? 50000 : 0));
+        const newTaxable = Math.max(0, annual_income - (isSalaried ? 75000 : 0));
+
+        const oldTax = calculateTaxNewRegimeOldSlabs(oldTaxable) * 1.04;
+        const newTax = calculateTaxNewRegimeRevisedSlabs(newTaxable) * 1.04;
+
+        const slabSavings = (oldTax - newTax) - (isSalaried ? stdDeductionSavings : 0);
+        total_impact += Math.max(0, slabSavings);
+
+        triggered_rules.push({
+          ...bill.rules[1],
+          impact: Math.max(0, slabSavings),
+          explanation: `Revised tax slabs under Section 115BAC save ₹${Math.round(Math.max(0, slabSavings)).toLocaleString('en-IN')}.`
+        });
+
+        explanation = `Total estimated tax savings: ₹${Math.round(total_impact).toLocaleString('en-IN')} under revised New Tax Regime rules.`;
+      } 
+      else if (bill.id === 3 && equity_ltcg > 0) {
+        const oldExemption = 100000;
+        const newExemption = 125000;
+        
+        const oldLtcgTax = Math.max(0, equity_ltcg - oldExemption) * 0.10 * 1.04;
+        const newLtcgTax = Math.max(0, equity_ltcg - newExemption) * 0.125 * 1.04;
+        
+        const ltcgImpact = oldLtcgTax - newLtcgTax; // Negative means increased tax cost
+        total_impact = ltcgImpact;
+
+        triggered_rules.push({
+          ...bill.rules[0],
+          impact: ltcgImpact,
+          explanation: `LTCG tax rate change from 10% to 12.5% with ₹1.25L exemption net impact: ${ltcgImpact >= 0 ? '+' : ''}₹${Math.round(ltcgImpact).toLocaleString('en-IN')}.`
+        });
+
+        explanation = `Net LTCG Tax change: ${ltcgImpact >= 0 ? 'Savings of' : 'Additional cost of'} ₹${Math.abs(Math.round(ltcgImpact)).toLocaleString('en-IN')}.`;
+      } 
+      else {
+        explanation = "No direct financial rule matches for your specific profile combination in this bill.";
+      }
+
+      return {
+        bill_id: bill.id,
+        title: bill.title,
+        total_impact: Math.round(total_impact),
+        explanation,
+        triggered_rules
+      };
+    }
+
+    // --- MAIN REACT APP ---
+    function App() {
+      const [selectedBillId, setSelectedBillId] = useState(1);
+      const [income, setIncome] = useState(1200000);
+      const [employment, setEmployment] = useState('salaried');
+      const [regime, setRegime] = useState('new');
+      const [age, setAge] = useState(32);
+      const [equityLtcg, setEquityLtcg] = useState(200000);
+      const [activeTooltip, setActiveTooltip] = useState(null);
+
+      // Profiles list for side-by-side comparison
+      const profiles = [
+        { name: "Self (Salaried)", income, employment, regime, age, equityLtcg },
+        { name: "Spouse (Business)", income: 1800000, employment: 'business', regime: 'new', age: 30, equityLtcg: 0 },
+        { name: "Senior Parent", income: 800000, employment: 'salaried', regime: 'old', age: 67, equityLtcg: 50000 }
+      ];
+
+      const currentBill = useMemo(() => BILLS_DATA.find(b => b.id === selectedBillId), [selectedBillId]);
+      
+      const currentProfile = useMemo(() => ({
+        annual_income: Number(income),
+        employment,
+        tax_regime: regime,
+        age: Number(age),
+        equity_ltcg: Number(equityLtcg)
+      }), [income, employment, regime, age, equityLtcg]);
+
+      const evaluation = useMemo(() => evaluateImpact(currentBill, currentProfile), [currentBill, currentProfile]);
+
+      // Calculate breakdown metrics
+      const baseTaxImpact = Math.round(evaluation.total_impact * 0.9615);
+      const cessImpact = evaluation.total_impact - baseTaxImpact;
+
+      return (
+        <div className="min-h-screen flex flex-col">
+          {/* Header */}
+          <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-50">
+            <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-lg shadow-sm">
+                  वि
+                </div>
+                <div>
+                  <h1 className="font-semibold text-lg tracking-tight leading-none">VidhiVyakhya</h1>
+                  <p className="text-xs text-slate-400 mt-0.5">Law, Decoded Personally</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-slate-300">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-xs text-indigo-300 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Local Calculation Engine (<10ms)
+                </span>
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-7xl mx-auto px-6 py-8 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* LEFT COLUMN: Bill Selector & Metadata */}
+            <div className="lg:col-span-4 space-y-6">
+              
+              {/* Bill List */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Parliamentary Bills</h2>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-600">{BILLS_DATA.length} Bills</span>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {BILLS_DATA.map(bill => (
+                    <button
+                      key={bill.id}
+                      onClick={() => setSelectedBillId(bill.id)}
+                      className={`w-full text-left p-4 transition-colors flex flex-col gap-1.5 ${
+                        selectedBillId === bill.id 
+                          ? 'bg-indigo-50/60 border-l-4 border-indigo-600' 
+                          : 'hover:bg-slate-50 border-l-4 border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                          {bill.category}
+                        </span>
+                        <span className="text-xs text-slate-500 font-medium">{bill.reading_time} min read</span>
+                      </div>
+                      <h3 className="font-medium text-slate-900 text-sm leading-snug">{bill.title}</h3>
+                      <p className="text-xs text-slate-500 line-clamp-2">{bill.summary}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Selected Bill Rich Metadata Card */}
+              <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Legislative Metadata</h3>
+                
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-slate-50 rounded-lg">
+                    <span className="text-slate-500 block">Ministry</span>
+                    <span className="font-medium text-slate-800 mt-0.5 block">{currentBill.ministry}</span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-lg">
+                    <span className="text-slate-500 block">Bill Number</span>
+                    <span className="font-medium text-slate-800 mt-0.5 block">{currentBill.bill_number}</span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-lg">
+                    <span className="text-slate-500 block">Pages</span>
+                    <span className="font-medium text-slate-800 mt-0.5 block">{currentBill.pages} Pages</span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-lg">
+                    <span className="text-slate-500 block">Status</span>
+                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 mt-0.5">
+                      ✓ {currentBill.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Timeline Progress */}
+                <div className="pt-2">
+                  <span className="text-xs font-medium text-slate-500 block mb-3">Legislative Timeline</span>
+                  <div className="relative pl-4 border-l-2 border-slate-200 space-y-3">
+                    {currentBill.timeline.map((item, idx) => (
+                      <div key={idx} className="relative flex items-center justify-between text-xs">
+                        <span className={`absolute -left-[21px] w-2.5 h-2.5 rounded-full ${item.completed ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                        <span className={`font-medium ${item.completed ? 'text-slate-900' : 'text-slate-400'}`}>{item.stage}</span>
+                        <span className="text-slate-400 text-[11px]">{item.date || 'Passed'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* RIGHT COLUMN: Simulator & Impact Results */}
+            <div className="lg:col-span-8 space-y-6">
+
+              {/* Interactive Profile Controls */}
+              <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-6">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <div>
+                    <h2 className="font-semibold text-slate-900">Financial Profile Simulator</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">Adjust income and parameters to recalculate impact instantly in-browser</p>
+                  </div>
+                  <span className="text-xs font-medium px-2.5 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                    Client Engine Active
+                  </span>
+                </div>
+
+                {/* SLIDER FEATURE */}
+                <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-slate-700 uppercase tracking-wider">Annual Taxable Income</label>
+                    <span className="text-lg font-bold text-indigo-900 font-mono">
+                      ₹{Number(income).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="300000"
+                    max="3000000"
+                    step="50000"
+                    value={income}
+                    onChange={(e) => setIncome(e.target.value)}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                  />
+                  <div className="flex justify-between text-[11px] text-slate-400 font-medium">
+                    <span>₹3 Lakhs</span>
+                    <span>₹15 Lakhs</span>
+                    <span>₹30 Lakhs</span>
+                  </div>
+                </div>
+
+                {/* Dropdowns Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 block mb-1">Employment</label>
+                    <select
+                      value={employment}
+                      onChange={(e) => setEmployment(e.target.value)}
+                      className="w-full text-xs font-medium p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="salaried">Salaried Employee</option>
+                      <option value="business">Business / Self-Employed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 block mb-1">Tax Regime</label>
+                    <select
+                      value={regime}
+                      onChange={(e) => setRegime(e.target.value)}
+                      className="w-full text-xs font-medium p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="new">New Regime (Sec 115BAC)</option>
+                      <option value="old">Old Tax Regime</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 block mb-1">Equity LTCG Gains</label>
+                    <input
+                      type="number"
+                      value={equityLtcg}
+                      onChange={(e) => setEquityLtcg(e.target.value)}
+                      placeholder="₹ Capital gains"
+                      className="w-full text-xs font-medium p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* IMPACT RESULT CARD */}
+              <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-6">
+                
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-xl bg-slate-900 text-white">
+                  <div>
+                    <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">Estimated Net Rupee Impact</span>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className={`text-3xl font-extrabold font-mono tracking-tight ${evaluation.total_impact >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {evaluation.total_impact >= 0 ? '+' : ''}₹{Math.abs(evaluation.total_impact).toLocaleString('en-IN')}
+                      </span>
+                      <span className="text-xs text-slate-400 font-normal">
+                        {evaluation.total_impact >= 0 ? 'Estimated Tax Savings' : 'Estimated Tax Increase'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-left sm:text-right text-xs text-slate-400">
+                    <span className="block font-medium text-slate-200">{currentBill.title}</span>
+                    <span className="text-[11px]">Grounded in Clause Citations</span>
+                  </div>
+                </div>
+
+                {/* TAX BREAKDOWN VISUALIZATION */}
+                {evaluation.total_impact !== 0 && (
+                  <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Tax Breakdown Distribution</h4>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="flex justify-between text-xs text-slate-600 mb-1">
+                          <span>Base Income Tax Component</span>
+                          <span className="font-mono font-medium">₹{Math.abs(baseTaxImpact).toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                          <div className="bg-indigo-600 h-full rounded-full transition-all duration-300" style={{ width: '92%' }}></div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs text-slate-600 mb-1">
+                          <span>Health & Education Cess (4%)</span>
+                          <span className="font-mono font-medium">₹{Math.abs(cessImpact).toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                          <div className="bg-emerald-500 h-full rounded-full transition-all duration-300" style={{ width: '8%' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TRACE EXPLANATION WITH GLOSSARY TOOLTIPS */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Calculation Trace & Glossary Terms</h4>
+                  
+                  <div className="p-4 bg-amber-50/50 border border-amber-200/60 rounded-xl text-xs text-slate-700 leading-relaxed relative">
+                    <p className="font-medium text-slate-900 mb-2">{evaluation.explanation}</p>
+                    <p className="text-slate-600">
+                      Hover over terms like{" "}
+                      {Object.keys(GLOSSARY).map((term, i) => (
+                        <span key={i}>
+                          <span
+                            onMouseEnter={() => setActiveTooltip(term)}
+                            onMouseLeave={() => setActiveTooltip(null)}
+                            className="underline decoration-indigo-400 underline-offset-4 font-medium text-indigo-700 cursor-help transition-colors hover:text-indigo-900"
+                          >
+                            {term}
+                          </span>
+                          {i < Object.keys(GLOSSARY).length - 1 ? ", " : "."}
+                        </span>
+                      ))}
+                    </p>
+
+                    {/* Popover Tooltip */}
+                    {activeTooltip && (
+                      <div className="absolute left-6 bottom-12 w-72 p-3 bg-slate-900 text-white rounded-lg shadow-xl border border-slate-700 text-xs z-50 animate-in fade-in duration-150">
+                        <span className="font-semibold text-indigo-300 block mb-1">{activeTooltip}</span>
+                        <p className="text-slate-300 text-[11px] leading-normal">{GLOSSARY[activeTooltip]}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* CLAUSE CITATION CARDS */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Grounding Clause Citations</h4>
+                  
+                  {evaluation.triggered_rules.length > 0 ? (
+                    evaluation.triggered_rules.map((rule, idx) => (
+                      <div key={idx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-mono">
+                            {rule.clause_number}
+                          </span>
+                          <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                            ✓ Verified ({(rule.confidence * 100).toFixed(0)}% Confidence)
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-800 italic bg-white p-3 rounded border border-slate-100">
+                          "{rule.clause_text}"
+                        </p>
+                        <p className="text-xs font-medium text-indigo-900">{rule.explanation}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-slate-200">
+                      No clause citations triggered for the selected profile parameters.
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+              {/* MULTI-PROFILE COMPARISON DECK */}
+              <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
+                <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Family & Entities Profile Comparison</h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {profiles.map((p, idx) => {
+                    const profImpact = evaluateImpact(currentBill, {
+                      annual_income: p.income,
+                      employment: p.employment,
+                      tax_regime: p.regime,
+                      age: p.age,
+                      equity_ltcg: p.equityLtcg
+                    });
+                    
+                    return (
+                      <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                        <span className="text-xs font-semibold text-slate-900 block">{p.name}</span>
+                        <span className="text-[11px] text-slate-500 block">
+                          ₹{(p.income / 100000).toFixed(1)}L • {p.employment}
+                        </span>
+                        <div className="pt-2 border-t border-slate-200">
+                          <span className={`text-base font-bold font-mono ${profImpact.total_impact >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {profImpact.total_impact >= 0 ? '+' : ''}₹{Math.abs(profImpact.total_impact).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
+
+          </main>
+
+          <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
+            VidhiVyakhya (विधिव्याख्या) — Personal Financial Law Impact Calculator • Grounded in Parliamentary Bill Text
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

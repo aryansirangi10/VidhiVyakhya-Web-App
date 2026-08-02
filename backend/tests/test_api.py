@@ -137,3 +137,62 @@ def test_user_flow_auth_profiles_history():
     history_data = history_res.json()
     assert len(history_data) == 1
     assert history_data[0]["calculated_impact"] == 5200.0
+
+def test_new_phase4_endpoints():
+    # Setup user
+    client.post("/api/auth/register", json={
+        "email": "phase4@example.com",
+        "password": "strongpassword123"
+    })
+    login_res = client.post("/api/auth/login", json={
+        "email": "phase4@example.com",
+        "password": "strongpassword123"
+    })
+    token = login_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Fetch Finance Bill ID
+    bills_res = client.get("/api/bills")
+    bill_id = [b["id"] for b in bills_res.json() if b["title"] == "Finance Bill 2024"][0]
+
+    # Test Timeline API
+    time_res = client.get(f"/api/bills/{bill_id}/timeline")
+    assert time_res.status_code == 200
+    timeline_data = time_res.json()
+    assert len(timeline_data) == 5
+    assert timeline_data[0]["stage"] == "Introduced"
+    assert timeline_data[0]["completed"] is True
+
+    # Test Metadata API
+    meta_res = client.get(f"/api/bills/{bill_id}/metadata")
+    assert meta_res.status_code == 200
+    meta_data = meta_res.json()
+    assert meta_data["category"] == "Income Tax"
+    assert meta_data["ministry"] == "Ministry of Finance"
+
+    # Test Glossary API
+    gloss_res = client.get("/api/glossary")
+    assert gloss_res.status_code == 200
+    gloss_data = gloss_res.json()
+    assert len(gloss_data) > 0
+    assert any(g["term"] == "Assessment Year" for g in gloss_data)
+
+    # Test Profile Comparison API
+    # Create profile
+    client.post("/api/profiles", headers=headers, json={
+        "name": "Compare Me",
+        "profile_data": {
+            "annual_income": 1000000,
+            "age": 30,
+            "tax_regime": "new",
+            "state": "Maharashtra",
+            "employment_category": "salaried",
+            "equity_ltsg": 0
+        }
+    })
+    comp_res = client.get(f"/api/profiles/compare?bill_id={bill_id}", headers=headers)
+    assert comp_res.status_code == 200
+    comp_data = comp_res.json()
+    assert len(comp_data) == 1
+    assert comp_data[0]["name"] == "Compare Me"
+    assert comp_data[0]["impact"] == 13000.0

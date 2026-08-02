@@ -1,17 +1,44 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { 
   ArrowRight, Lock, User, Plus, Trash2, Settings, Upload, History, 
   Globe, Download, Info, FileText, CheckCircle2, ChevronRight, X, AlertTriangle, Eye, EyeOff
 } from "lucide-react";
+
+// PDF Viewer
 import PDFViewer from "./components/PDFViewer";
-import RupeeCounter from "./components/RupeeCounter";
+
+// Services Layer
+import { billService } from "./services/billService";
+import { profileService } from "./services/profileService";
+import { simulationService } from "./services/simulationService";
+import { glossaryService } from "./services/glossaryService";
+
+// Custom Hooks
+import { useImpactSimulator } from "./hooks/useImpactSimulator";
+import { useTimeline } from "./hooks/useTimeline";
+import { useBillMetadata } from "./hooks/useBillMetadata";
+import { useProfileComparison } from "./hooks/useProfileComparison";
+import { useGlossary } from "./hooks/useGlossary";
+import { useAnimatedNumber } from "./hooks/useAnimatedNumber";
+
+// Visual Components
+import Timeline from "./components/Bill/Timeline";
+import Metadata from "./components/Bill/Metadata";
+import ReadingTime from "./components/Bill/ReadingTime";
+import IncomeSlider from "./components/Calculator/IncomeSlider";
+import BreakdownBars from "./components/Calculator/BreakdownBars";
+import AnimatedImpact from "./components/Calculator/AnimatedImpact";
+import CitationCard from "./components/Rule/CitationCard";
+import RuleMatch from "./components/Rule/RuleMatch";
+import ComparisonGrid from "./components/Profiles/ComparisonGrid";
+import Tooltip from "./components/Common/Tooltip";
+import StatCard from "./components/Common/StatCard";
 
 const STATES = [
   "Andhra Pradesh", "Bihar", "Delhi", "Gujarat", "Karnataka", 
   "Maharashtra", "Tamil Nadu", "Telangana", "Uttar Pradesh", "West Bengal"
 ];
 
-// Seeded translations for preloaded bills (Phase 2 language toggle)
 const TRANSLATIONS = {
   en: {
     heroTitle: "Law, Decoded Personally",
@@ -112,14 +139,14 @@ const TRANSLATIONS = {
     comparisonTitle: "విధాన మార్పు",
     shareTitle: "ప్రభావాన్ని భాగస్వామ్యం చేయండి",
     downloadCard: "సోషల్ కార్డ్ డౌన్‌లోడ్ చేయి",
-    blurImpact: "గోపनीयత కోసం మొత్తాన్ని బ్లర్ చేయి",
+    blurImpact: "గోపనీయత కోసం మొత్తాన్ని బ్లర్ చేయి",
     noAccount: "దీన్ని కాలక్రమేణా ట్రాక్ చేయాలనుకుంటున్నారా?",
     createFreeAccount: "ఉచిత ఖాతాను సృష్టించండి",
     historyTitle: "సిమ్యులేషన్స్ చరిత్ర",
     savedProfiles: "భద్రపరిచిన ప్రొఫైల్స్",
-    privacyNotice: "గోప్యతా నోటీసు: అనామక వినియోగదారుల ప్రొఫైల్ డేటా సర్వర్‌లో నిల్వ చేయబడదు. అన్ని లెక్కలు మీ బ్రౌజర్‌లోనే జరుగుతాయి.",
+    privacyNotice: "గోప్యతా నోటీసు: అనామక వినియోగదారుల ప్రొఫైల్ డేటా సర్వర్‌లో నిల్వ చేయబడదు. అన్ని లెక్కలు మీ బ్రౌజర్‌లోనే జరుగుస్తాయి.",
     apiSettingsTitle: "నియమ సంగ్రహణ API సెట్టింగులు",
-    apiPlaceholder: "జెమిని API కీని ఇక్కడ పేస్ట్ చేయండి...",
+    apiPlaceholder: "అనుకూల API కీని పేస్ట్ చేయండి...",
     apiKeyNote: "మీ కీ బ్రౌజర్ లోకల్ స్టోరేజ్‌లో మాత్రమే దాచబడుతుంది, సర్వర్‌కు పంపబడదు.",
     uploadTitle: "కొత్త పార్లమెంటరీ బిల్లును అప్‌లోడ్ చేయండి",
     uploadNote: "పీడీఎఫ్ అప్‌లోడ్ చేయండి. కీ లేకపోతే డెమో రూల్స్ మాత్రమే క్రియేట్ అవుతాయి.",
@@ -130,41 +157,35 @@ const TRANSLATIONS = {
 };
 
 const HINDI_EXPLANATION_MAPPING = {
-  "Increased standard deduction from ₹50,000 to ₹75,000 saves you ₹": "वेतनभोगी कर्मचारियों के लिए मानक कटौती को ₹50,000 से बढ़ाकर ₹75,000 करने पर आपकी सीमांत कर दर पर कुल कर बचत ₹",
-  "You save ₹": "नई कर व्यवस्था के तहत संशोधित कर स्लैब के कारण आप ₹",
-  "Revised tax slabs cost you an additional ₹": "संशोधित कर स्लैब के कारण नई कर व्यवस्था में आपकी अतिरिक्त लागत ₹",
-  "The revised tax slabs have zero net impact on your income bracket.": "संशोधित कर स्लैब का आपकी आय सीमा पर शून्य शुद्ध प्रभाव पड़ता है।",
-  "As a business owner, you are subject to the DPDP compliance rules with penalties up to ₹250 Cr for data breaches.": "एक व्यवसाय के स्वामी के रूप में, आप डेटा उल्लंघनों के लिए ₹250 करोड़ तक के दंड के साथ डीपीडीपी अनुपालन नियमों के अधीन हैं।",
-  "As an individual data principal, DPDP grants you data control rights and does not cost you penalties.": "एक व्यक्तिगत डेटा प्रिंसिपल के रूप में, डीपीडीपी आपको डेटा नियंत्रण अधिकार प्रदान करता है और इसमें कोई दंड नहीं है।",
-  "Higher exemption limit of ₹125,000 saves you ₹": "₹1,25,000 की उच्च छूट सीमा के साथ पूंजीगत लाभ कर में आपकी बचत ₹",
-  "Increased LTSG rate from 10.0% to 12.5% costs you ₹": "इक्विटी परिसंपत्तियों पर दीर्घकालिक पूंजीगत लाभ दर को 10% से बढ़ाकर 12.5% करने के कारण आपकी कर लागत ₹"
+  "Applied Standard Deduction saving of": "मानक कटौती के कारण आपकी सीमांत दर पर शुद्ध कर बचत:",
+  "Tax Slabs Adjustment: Saved": "संशोधित कर स्लैब के कारण कुल कर बचत:",
+  "LTCG rate increase to 12.5% added a net tax cost of": "दीर्घकालिक पूंजीगत लाभ दर (LTCG) को 12.5% करने पर कर भार बढ़ा:",
+  "LTCG exemption expansion saved": "पूंजीगत लाभ (LTCG) सीमा छूट बढ़ने से कर बचत:",
+  "Compliance Risk Warning: New penalty guidelines": "डीपीडीपी अनुपालन जोखिम चेतावनी: नियमों के उल्लंघन पर जुर्माना:",
+  "Cumulative Net Outcome": "कुल संचयी परिणाम"
 };
 
 const TELUGU_EXPLANATION_MAPPING = {
-  "Increased standard deduction from ₹50,000 to ₹75,000 saves you ₹": "ఉద్యోగులకు ప్రామాణిక తగ్గింపును ₹50,000 నుండి ₹75,000 కి పెంచడం ద్వారా మీకు లభించే పన్ను ఆదా ₹",
-  "You save ₹": "కొత్త పన్ను విధానంలో సవరించిన స్లాబ్‌ల కారణంగా మీరు ఆదా చేసిన మొత్తం ₹",
-  "Revised tax slabs cost you an additional ₹": "సవరించిన పన్ను స్లాబ్‌ల కారణంగా కొత్త పన్ను విధానంలో మీకు అదనంగా పడే పన్ను భారం ₹",
-  "The revised tax slabs have zero net impact on your income bracket.": "సవరించిన పన్ను స్లాబ్‌ల వలన మీ ఆదాయ పరిమితిపై ఎటువంటి పన్ను మార్పు లేదు.",
-  "As a business owner, you are subject to the DPDP compliance rules with penalties up to ₹250 Cr for data breaches.": "వ్యాపార యజమానిగా, మీరు డేటా ఉల్లంఘనల కోసం ₹250 కోట్ల వరకు జరిమానాలతో కూడిన DPDP నిబంధనలకు కట్టుబడి ఉండాలి.",
-  "As an individual data principal, DPDP grants you data control rights and does not cost you penalties.": "వ్యక్తిగత డేటా ప్రిన్సిపాల్‌గా, DPDP మీకు డేటా నియంత్రణ హక్కులను మంజూరు చేస్తుంది మరియు ఎటువంటి జరిమానాలు పడవు.",
-  "Higher exemption limit of ₹125,000 saves you ₹": "₹1,25,000 కి పెంచిన పన్ను మినహాయింపు పరిమితి ద్వారా మీకు ఆదా అయిన క్యాపిటల్ గెయిన్స్ పన్ను ₹",
-  "Increased LTSG rate from 10.0% to 12.5% costs you ₹": "లాంగ్-టర్మ్ క్యాపిటల్ గెయిన్స్ పన్నును 10% నుండి 12.5% కి పెంచడం వల్ల మీపై అదనంగా పడే పన్ను భారం ₹"
+  "Applied Standard Deduction saving of": "ప్రామాణిక తగ్గింపు కారణంగా మీకు లభించిన పన్ను ఆదా:",
+  "Tax Slabs Adjustment: Saved": "సవరించిన పన్ను స్లాబ్‌ల కారణంగా ఆదా అయిన మొత్తం:",
+  "LTCG rate increase to 12.5% added a net tax cost of": "LTCG పన్ను 12.5% కి పెరగడం వల్ల పడిన అదనపు పన్ను భారం:",
+  "LTCG exemption expansion saved": "క్యాపిటల్ గెయిన్స్ మినహాయింపు పెరగడం వల్ల ఆదా అయిన పన్ను:",
+  "Compliance Risk Warning: New penalty guidelines": "DPDP డేటా నిబంధనల ఉల్లంఘన జరిమానా భద్రతా హెచ్చరిక:",
+  "Cumulative Net Outcome": "మొత్తం నికర పన్ను మార్పు"
 };
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export default function App() {
   const [lang, setLang] = useState("en");
   const t = TRANSLATIONS[lang];
 
-  // App States
-  const [activeTab, setActiveTab] = useState("bills"); // bills, calc_history, profiles, auth
+  // App Navigation States
+  const [activeTab, setActiveTab] = useState("bills"); 
   const [bills, setBills] = useState([]);
   const [selectedBill, setSelectedBill] = useState(null);
   
   // Profile form values (Phase 1 inputs)
   const [profileForm, setProfileForm] = useState({
-    annual_income: 800000,
+    annual_income: 1000000,
     age: 30,
     tax_regime: "new",
     state: "Maharashtra",
@@ -173,10 +194,10 @@ export default function App() {
     save_session: true,
   });
 
-  // Verification & Loading indicators
+  // Highlight coordinates & loader indicators
   const [calculating, setCalculating] = useState(false);
-  const [result, setResult] = useState(null);
-  const [selectedRule, setSelectedRule] = useState(null);
+  const [activeRuleHighlight, setActiveRuleHighlight] = useState(null);
+  const [selectedRuleId, setSelectedRuleId] = useState(null);
   
   // Custom API Key & upload panel states
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -194,18 +215,34 @@ export default function App() {
   const [simHistory, setSimHistory] = useState([]);
   const [activeProfileId, setActiveProfileId] = useState("");
 
-  // Share Card blur setting
+  // Share Card settings
   const [blurExactAmount, setBlurExactAmount] = useState(false);
 
-  // Initialize
+  // Glossary Hover States
+  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  // Custom hooks integrations
+  const { timeline, loading: timelineLoading, error: timelineError } = useTimeline(selectedBill?.id);
+  const { metadata: billMeta, loading: metaLoading, error: metaError } = useBillMetadata(selectedBill?.id);
+  const { comparisons, loading: compLoading, refetch: refetchComparisons } = useProfileComparison(token, selectedBill?.id);
+  const { definition, loading: glossaryLoading, fetchTerm, clearTerm, highlightTerms } = useGlossary();
+
+  // Local Evaluator engine hook (runs instantly on profileForm changes)
+  const { impact, matchedRules, breakdown, trace, hasComplianceAlert } = useImpactSimulator(
+    profileForm,
+    selectedBill?.rules || []
+  );
+
+  // Initial Seed loaders
   useEffect(() => {
     fetchBills();
     
-    // Load API Key if present
+    // Load API Key
     const savedKey = localStorage.getItem("gemini_api_key") || "";
     setApiKey(savedKey);
 
-    // Load inputs session cache (Phase 1 browser storage persistence)
+    // Load inputs session cache
     const sessionCached = localStorage.getItem("vidhi_session_inputs");
     if (sessionCached) {
       try {
@@ -216,7 +253,7 @@ export default function App() {
     }
   }, []);
 
-  // Sync token to auth loads
+  // Sync token to auth databases
   useEffect(() => {
     if (token) {
       fetchProfiles();
@@ -230,58 +267,48 @@ export default function App() {
   // Fetch Bills from DB
   const fetchBills = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/bills`);
-      if (res.ok) {
-        const data = await res.json();
-        setBills(data);
-      }
+      const data = await billService.getBills();
+      setBills(data);
     } catch (e) {
-      console.error("Failed to load bills: ", e);
+      console.error(e);
     }
   };
 
   const fetchProfiles = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/profiles`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSavedProfiles(data);
-        if (data.length > 0 && !activeProfileId) {
-          setActiveProfileId(data[0].id.toString());
-        }
+      const data = await profileService.getProfiles(token);
+      setSavedProfiles(data);
+      if (data.length > 0 && !activeProfileId) {
+        setActiveProfileId(data[0].id.toString());
       }
     } catch (e) {
-      console.error("Failed to load profiles: ", e);
+      console.error(e);
     }
   };
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/history`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSimHistory(data);
-      }
+      const data = await simulationService.getHistory(token);
+      setSimHistory(data);
     } catch (e) {
-      console.error("Failed to load calculation logs: ", e);
+      console.error(e);
     }
   };
 
   const selectBill = async (bill) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/bills/${bill.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSelectedBill(data);
-        setResult(null);
-        setSelectedRule(null);
+      const data = await billService.getBillById(bill.id);
+      setSelectedBill(data);
+      // Auto-select first rule for visual highlight
+      if (data.rules && data.rules.length > 0) {
+        setSelectedRuleId(data.rules[0].id);
+        setActiveRuleHighlight(data.rules[0].source_span);
+      } else {
+        setSelectedRuleId(null);
+        setActiveRuleHighlight(null);
       }
     } catch (e) {
-      console.error("Failed to get bill details: ", e);
+      console.error(e);
     }
   };
 
@@ -303,13 +330,10 @@ export default function App() {
     }
   };
 
-  // Profile Auto-fill selector
-  const handleProfileSelect = (e) => {
-    const pId = e.target.value;
-    setActiveProfileId(pId);
-    if (!pId) return;
-    
-    const matched = savedProfiles.find(p => p.id.toString() === pId);
+  // Compare profile click selector (updates form with saved data instantly)
+  const handleProfileSelect = (pId) => {
+    setActiveProfileId(pId.toString());
+    const matched = savedProfiles.find(p => p.id.toString() === pId.toString());
     if (matched) {
       setProfileForm({
         ...profileForm,
@@ -318,69 +342,23 @@ export default function App() {
     }
   };
 
-  // Run calculation (Phase 1 Anonymous evaluation)
-  const calculateImpact = async (e) => {
-    e.preventDefault();
-    if (!selectedBill) return;
-
-    setCalculating(true);
-    setResult(null);
-    setSelectedRule(null);
-
-    // Skeleton loader timer (minimum 800ms to allow smooth visual loader effect)
-    const minTimer = new Promise(resolve => setTimeout(resolve, 800));
-
+  // Saves calculated simulation log to database history timeline
+  const saveSimulationRecord = async () => {
+    if (!token || !activeProfileId || !selectedBill) return;
+    
     try {
-      const calcPromise = fetch(`${API_BASE_URL}/api/calculate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bill_id: selectedBill.id,
-          profile: {
-            annual_income: profileForm.annual_income,
-            age: profileForm.age,
-            tax_regime: profileForm.tax_regime,
-            state: profileForm.state,
-            employment_category: profileForm.employment_category,
-            equity_ltsg: profileForm.equity_ltsg
-          }
-        })
+      await simulationService.saveHistory(token, {
+        profile_id: Number(activeProfileId),
+        bill_id: selectedBill.id,
+        calculated_impact: impact,
+        explanation: trace.join("\n"),
+        details_json: { triggered_rules: matchedRules }
       });
-
-      const [res, _] = await Promise.all([calcPromise, minTimer]);
-
-      if (res.ok) {
-        const data = await res.json();
-        setResult(data);
-        
-        // Auto-select first rule to show initial PDF highlight instantly
-        if (data.triggered_rules && data.triggered_rules.length > 0) {
-          setSelectedRule(data.triggered_rules[0]);
-        }
-
-        // If authenticated, automatically log simulation history (Phase 3 save simulations)
-        if (token && activeProfileId) {
-          await fetch(`${API_BASE_URL}/api/history`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              profile_id: Number(activeProfileId),
-              bill_id: selectedBill.id,
-              calculated_impact: data.total_impact,
-              explanation: data.explanation,
-              details_json: { triggered_rules: data.triggered_rules }
-            })
-          });
-          fetchHistory();
-        }
-      }
-    } catch (err) {
-      console.error("Calculation failed: ", err);
-    } finally {
-      setCalculating(false);
+      alert("Impact Simulation logged to history timeline successfully!");
+      fetchHistory();
+      refetchComparisons();
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -391,7 +369,6 @@ export default function App() {
     let text = engText;
     const mapping = lang === "hi" ? HINDI_EXPLANATION_MAPPING : TELUGU_EXPLANATION_MAPPING;
     
-    // Replace standard segments
     Object.keys(mapping).forEach(key => {
       if (text.includes(key)) {
         text = text.replace(key, mapping[key]);
@@ -436,10 +413,7 @@ export default function App() {
     ctx.font = "16px Inter, sans-serif";
     ctx.fillText("Calculated personal financial impact:", 40, 190);
 
-    // Impact value rendering
-    const impact = result?.total_impact || 0;
     const isSavings = impact >= 0;
-    
     ctx.fillStyle = isSavings ? "#059669" : "#DC2626";
     ctx.font = "bold 56px Inter, sans-serif";
 
@@ -479,7 +453,7 @@ export default function App() {
     e.preventDefault();
     const endpoint = authForm.isSignUp ? "register" : "login";
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/${endpoint}`, {
+      const res = await fetch(`/api/auth/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: authForm.email, password: authForm.password })
@@ -487,14 +461,13 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         if (authForm.isSignUp) {
-          // Automatic login upon register
+          alert("Account registered successfully! Please sign in.");
           setAuthForm({ ...authForm, isSignUp: false });
-          alert("Account registered! Please log in with your credentials.");
         } else {
-          localStorage.setItem("token", data.access_token);
-          localStorage.setItem("userEmail", authForm.email);
           setToken(data.access_token);
           setUserEmail(authForm.email);
+          localStorage.setItem("token", data.access_token);
+          localStorage.setItem("userEmail", authForm.email);
           setActiveTab("bills");
         }
       } else {
@@ -502,489 +475,259 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
-      alert("Auth server connection failed.");
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userEmail");
     setToken("");
     setUserEmail("");
+    localStorage.removeItem("token");
+    localStorage.removeItem("userEmail");
+    setActiveProfileId("");
     setActiveTab("bills");
   };
 
-  const deleteAccount = async () => {
-    if (!window.confirm("Are you absolutely sure you want to delete your account? All saved profiles and history will be deleted immediately.")) return;
+  const saveProfile = async (e) => {
+    e.preventDefault();
+    const name = prompt("Enter profile display name (e.g. Spouse, HUF, My Company):");
+    if (!name) return;
+
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/account`, {
+      const res = await profileService.createProfile(token, {
+        name: name,
+        display_name: name,
+        profile_data: {
+          annual_income: profileForm.annual_income,
+          age: profileForm.age,
+          tax_regime: profileForm.tax_regime,
+          state: profileForm.state,
+          employment_category: profileForm.employment_category,
+          equity_ltsg: profileForm.equity_ltsg
+        },
+        avatar: "avatar_1",
+        color: "#4f46e5",
+        default_profile: savedProfiles.length === 0
+      });
+      alert("Profile secure encrypted and saved!");
+      fetchProfiles();
+      refetchComparisons();
+    } catch (err) {
+      alert("Failed to save profile.");
+    }
+  };
+
+  const deleteProfile = async (id) => {
+    if (!confirm("Are you sure you want to delete this profile?")) return;
+    try {
+      await profileService.deleteProfile(token, id);
+      fetchProfiles();
+      refetchComparisons();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm("CAUTION: This permanently scrub-deletes your user account and all encrypted profiles. Proceed?")) return;
+    try {
+      const res = await fetch(`/api/auth/account`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
+        alert("Account completely deleted.");
         handleLogout();
-        alert("Account deleted.");
       }
     } catch (err) {
       console.error(err);
     }
   };
 
-  // Profile management (Save Profile - Phase 3)
-  const [profileName, setProfileName] = useState("");
-  const handleSaveProfile = async (e) => {
+  // Upload Bill
+  const handleUpload = async (e) => {
     e.preventDefault();
-    if (!profileName.trim()) return;
+    if (!uploadFile) return;
 
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/profiles`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: profileName,
-          profile_data: {
-            annual_income: profileForm.annual_income,
-            age: profileForm.age,
-            tax_regime: profileForm.tax_regime,
-            state: profileForm.state,
-            employment_category: profileForm.employment_category,
-            equity_ltsg: profileForm.equity_ltsg
-          }
-        })
-      });
-      if (res.ok) {
-        setProfileName("");
-        fetchProfiles();
-        alert("Profile saved securely (AES-256 encrypted at rest).");
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const deleteProfile = async (id) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/profiles/${id}`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchProfiles();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // API Key Settings toggle
-  const saveApiKeySetting = () => {
-    localStorage.setItem("gemini_api_key", apiKey);
-    setSettingsOpen(false);
-    alert("Gemini key saved locally to browser sandbox.");
-  };
-
-  // Bill Upload (Phase 1 upload + Phase 2 Mock extractor support)
-  const handleUploadSubmit = async (e) => {
-    e.preventDefault();
-    if (!uploadFile) {
-      alert("Please select a bill PDF file to upload.");
-      return;
-    }
     setUploading(true);
-
     const formData = new FormData();
+    formData.append("file", uploadFile);
     formData.append("title", uploadForm.title);
     formData.append("summary", uploadForm.summary);
     if (uploadForm.source_url) {
       formData.append("source_url", uploadForm.source_url);
     }
-    formData.append("file", uploadFile);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/bills/upload`, {
-        method: "POST",
-        headers: {
-          "X-Gemini-API-Key": apiKey
-        },
-        body: formData
-      });
-      if (res.ok) {
-        alert("Bill processed and rules extracted successfully!");
-        setUploadOpen(false);
-        setUploadForm({ title: "", summary: "", source_url: "" });
-        setUploadFile(null);
-        fetchBills();
-      } else {
-        const errData = await res.json();
-        alert(errData.detail || "Upload parsing failed.");
-      }
+      const data = await billService.uploadBill(formData, apiKey);
+      alert(`Bill ingested successfully! Rules extracted: ${data.rules_extracted_count}`);
+      setUploadOpen(false);
+      setUploadForm({ title: "", summary: "", source_url: "" });
+      setUploadFile(null);
+      fetchBills();
     } catch (err) {
-      console.error(err);
-      alert("Server parsing call timed out or failed.");
+      alert(err.message || "Failed to process parliamentary bill.");
     } finally {
       setUploading(false);
     }
   };
 
+  const saveSettings = (e) => {
+    e.preventDefault();
+    localStorage.setItem("gemini_api_key", apiKey);
+    setSettingsOpen(false);
+    alert("Gemini key saved locally.");
+  };
+
+  const getPDFURL = () => {
+    if (!selectedBill) return "";
+    return `/api/bills/pdf/${selectedBill.pdf_path}`;
+  };
+
   return (
-    <div className="min-h-screen bg-white text-slate-800 flex flex-col font-sans">
-      {/* Header bar */}
-      <header className="border-b border-slate-100 bg-white sticky top-0 z-30">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans antialiased">
+      
+      {/* 1. Header Toolbar Layout */}
+      <header className="border-b border-slate-200 bg-white sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-brand-dark flex items-center justify-center text-white text-sm font-bold tracking-tight rounded-sm">
-              वि
-            </div>
-            <div>
-              <span className="font-bold text-slate-900 text-base tracking-tight">VidhiVyakhya</span>
-              <span className="hidden sm:inline text-xs text-slate-500 font-normal ml-2">विधिव्याख्या</span>
+          <div className="flex items-center gap-6">
+            <h1 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2 cursor-pointer" onClick={() => setSelectedBill(null)}>
+              <span className="text-white bg-indigo-950 p-1.5 rounded-sm font-serif">विधिव्याख्या</span>
+              <span>VidhiVyakhya</span>
+            </h1>
+            
+            {/* Lang selectors */}
+            <div className="flex bg-slate-100 p-0.5 rounded-sm text-[10px] font-bold">
+              {["en", "hi", "te"].map(l => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`px-2 py-1 rounded-sm uppercase ${lang === l ? 'bg-indigo-950 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  {l}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Lang toggle (Phase 2) */}
-            <div className="flex border border-slate-200 rounded-sm overflow-hidden text-xs font-medium">
-              <button 
-                onClick={() => setLang("en")} 
-                className={`px-2 py-1 ${lang === "en" ? "bg-brand text-white" : "bg-white hover:bg-slate-50"}`}
-              >
-                EN
-              </button>
-              <button 
-                onClick={() => setLang("hi")} 
-                className={`px-2 py-1 border-l border-slate-200 ${lang === "hi" ? "bg-brand text-white" : "bg-white hover:bg-slate-50"}`}
-              >
-                HI
-              </button>
-              <button 
-                onClick={() => setLang("te")} 
-                className={`px-2 py-1 border-l border-slate-200 ${lang === "te" ? "bg-brand text-white" : "bg-white hover:bg-slate-50"}`}
-              >
-                TE
-              </button>
-            </div>
-
-            {/* Admin Key Settings toggle */}
+          <nav className="flex items-center gap-4 text-xs font-bold uppercase tracking-wider">
             <button 
-              onClick={() => setSettingsOpen(true)}
-              className="p-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-sm"
-              title="API settings"
+              onClick={() => { setSelectedBill(null); setActiveTab("bills"); }}
+              className={`hover:text-slate-900 ${activeTab === 'bills' && !selectedBill ? 'text-brand' : 'text-slate-500'}`}
             >
-              <Settings size={16} />
+              Bills Library
             </button>
-
-            {/* Navigation options */}
-            {token ? (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setActiveTab(activeTab === "bills" ? "calc_history" : "bills")}
-                  className={`hidden sm:flex items-center gap-1 text-xs font-medium px-3 py-1.5 border border-slate-200 rounded-sm hover:bg-slate-50`}
+            {token && (
+              <>
+                <button 
+                  onClick={() => { setActiveTab("profiles"); setSelectedBill(null); }}
+                  className={`hover:text-slate-900 ${activeTab === 'profiles' ? 'text-brand' : 'text-slate-500'}`}
                 >
-                  <History size={14} />
-                  {activeTab === "bills" ? "Simulation History" : "View Bills"}
+                  My Profiles
                 </button>
                 <button 
-                  onClick={handleLogout}
-                  className="text-xs font-semibold px-3 py-1.5 bg-brand-dark text-white rounded-sm hover:bg-brand"
+                  onClick={() => { setActiveTab("calc_history"); setSelectedBill(null); }}
+                  className={`hover:text-slate-900 ${activeTab === 'calc_history' ? 'text-brand' : 'text-slate-500'}`}
                 >
-                  Log Out
+                  Simulation Timeline
+                </button>
+              </>
+            )}
+            
+            <div className="h-4 w-[1px] bg-slate-200"></div>
+
+            <button 
+              onClick={() => setSettingsOpen(true)}
+              className="text-slate-500 hover:text-slate-800"
+              title="Settings API Keys"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+
+            {token ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-semibold text-slate-500 tracking-normal lowercase">{userEmail}</span>
+                <button 
+                  onClick={handleLogout}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-1.5 rounded-sm border border-slate-200 text-[10px]"
+                >
+                  Sign Out
                 </button>
               </div>
             ) : (
               <button 
-                onClick={() => setActiveTab("auth")}
-                className="text-xs font-semibold px-3 py-1.5 bg-brand-dark text-white rounded-sm hover:bg-brand"
+                onClick={() => { setActiveTab("auth"); setSelectedBill(null); }}
+                className="bg-indigo-950 hover:bg-indigo-900 text-white px-3 py-1.5 rounded-sm text-[10px]"
               >
                 Sign In
               </button>
             )}
-          </div>
+          </nav>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+      {/* 2. Main Dashboard Panel container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
         
-        {/* API Settings Modal */}
-        {settingsOpen && (
-          <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center p-4 z-50">
-            <div className="bg-white border border-slate-200 w-full max-w-md p-6 relative rounded-sm shadow-minimal">
-              <button 
-                onClick={() => setSettingsOpen(false)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
-              >
-                <X size={18} />
-              </button>
-              <h3 className="font-bold text-slate-900 text-lg mb-2">{t.apiSettingsTitle}</h3>
-              <p className="text-xs text-slate-500 mb-4">{t.apiKeyNote}</p>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Gemini API Key</label>
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder={t.apiPlaceholder}
-                    className="w-full text-sm border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm"
-                  />
-                </div>
-                <button 
-                  onClick={saveApiKeySetting}
-                  className="w-full text-xs font-semibold bg-brand-dark text-white py-2 rounded-sm hover:bg-brand transition-colors"
-                >
-                  Save to Local Sandbox
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* Tooltip Overlay */}
+        {showTooltip && definition && (
+          <Tooltip 
+            definition={definition} 
+            loading={glossaryLoading} 
+            position={tooltipPos} 
+            onClose={() => setShowTooltip(false)}
+          />
         )}
 
-        {/* Upload Bill Modal */}
-        {uploadOpen && (
-          <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center p-4 z-50">
-            <div className="bg-white border border-slate-200 w-full max-w-lg p-6 relative rounded-sm shadow-minimal">
-              <button 
-                onClick={() => setUploadOpen(false)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
-              >
-                <X size={18} />
-              </button>
-              <h3 className="font-bold text-slate-900 text-lg mb-2">{t.uploadTitle}</h3>
-              <p className="text-xs text-slate-500 mb-4">{t.uploadNote}</p>
-
-              <form onSubmit={handleUploadSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Bill Title *</label>
-                  <input
-                    type="text"
-                    required
-                    value={uploadForm.title}
-                    onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
-                    placeholder="e.g. Finance Bill 2024"
-                    className="w-full text-sm border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Summary *</label>
-                  <textarea
-                    required
-                    rows={2}
-                    value={uploadForm.summary}
-                    onChange={(e) => setUploadForm({ ...uploadForm, summary: e.target.value })}
-                    placeholder="Provide a 2-3 sentence overview."
-                    className="w-full text-sm border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm resize-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Gazette Source Link (Optional)</label>
-                  <input
-                    type="url"
-                    value={uploadForm.source_url}
-                    onChange={(e) => setUploadForm({ ...uploadForm, source_url: e.target.value })}
-                    placeholder="https://..."
-                    className="w-full text-sm border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">PDF Gazette File *</label>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    required
-                    onChange={(e) => setUploadFile(e.target.files[0])}
-                    className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border file:border-slate-200 file:text-xs file:font-semibold file:bg-slate-50 hover:file:bg-slate-100"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={uploading}
-                  className="w-full text-xs font-semibold bg-brand-dark text-white py-2 rounded-sm hover:bg-brand disabled:opacity-50"
-                >
-                  {uploading ? "Extracting Rules..." : "Ingest Bill & Parse"}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Auth Page Tab */}
-        {activeTab === "auth" && (
-          <div className="max-w-md mx-auto py-12">
-            <div className="bg-white border border-slate-200 p-8 rounded-sm shadow-minimal">
-              <h2 className="font-bold text-xl text-slate-900 mb-2">
-                {authForm.isSignUp ? "Create your Account" : "Access your Account"}
-              </h2>
-              <p className="text-xs text-slate-500 mb-6">
-                Save family profiles, compile multi-bill simulations, and track history.
-              </p>
-
-              <form onSubmit={handleAuth} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    value={authForm.email}
-                    onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
-                    placeholder="you@example.com"
-                    className="w-full text-sm border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={authForm.password}
-                    onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                    placeholder="••••••••"
-                    className="w-full text-sm border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full text-xs font-semibold bg-brand-dark text-white py-2.5 rounded-sm hover:bg-brand transition-colors"
-                >
-                  {authForm.isSignUp ? "Sign Up" : "Sign In"}
-                </button>
-              </form>
-
-              <div className="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-600">
-                {authForm.isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-                <button
-                  onClick={() => setAuthForm({ ...authForm, isSignUp: !authForm.isSignUp })}
-                  className="text-brand font-bold hover:underline"
-                >
-                  {authForm.isSignUp ? "Sign In" : "Sign Up for Free"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* History Timelines Tab (Phase 3) */}
-        {activeTab === "calc_history" && (
-          <div className="space-y-6 max-w-4xl mx-auto">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">{t.historyTitle}</h2>
-                <p className="text-xs text-slate-500">History logs of simulations compiled across active profiles.</p>
-              </div>
-              <button 
-                onClick={() => setActiveTab("bills")}
-                className="text-xs font-medium text-brand hover:underline"
-              >
-                {t.backToDashboard}
-              </button>
-            </div>
-
-            {simHistory.length === 0 ? (
-              <div className="border border-slate-100 p-8 text-center bg-slate-50 rounded-sm">
-                <Info className="mx-auto text-slate-400 mb-2" size={24} />
-                <p className="text-sm text-slate-600 font-medium">No saved history yet.</p>
-                <p className="text-xs text-slate-400 mt-1">Run a bill calculation on a saved profile to store logs.</p>
-              </div>
-            ) : (
-              <div className="border border-slate-200 bg-white rounded-sm divide-y divide-slate-100">
-                {simHistory.map((s) => {
-                  const matchedProfile = savedProfiles.find(p => p.id === s.profile_id);
-                  return (
-                    <div key={s.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900 text-sm">{s.bill_title}</span>
-                          <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
-                            Profile: {matchedProfile?.name || "Deleted"}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">{s.explanation}</p>
-                        <span className="text-[10px] text-slate-400 mt-2 block">
-                          Simulated on: {new Date(s.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      
-                      <div className="text-right shrink-0">
-                        <span className={`text-base font-bold ${s.calculated_impact >= 0 ? "text-savings" : "text-cost"}`}>
-                          {s.calculated_impact >= 0 ? "+" : "-"}₹{Math.abs(s.calculated_impact).toLocaleString("en-IN")}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Account deletion utility (Phase 3 privacy) */}
-            <div className="pt-6 border-t border-slate-200 text-right">
-              <button 
-                onClick={deleteAccount}
-                className="text-xs font-semibold text-red-600 border border-red-200 px-3 py-1.5 rounded-sm hover:bg-red-50"
-              >
-                Delete Account & Scrub Data
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Dashboard Landing view */}
+        {/* Tab 1: Library list */}
         {activeTab === "bills" && !selectedBill && (
-          <div className="space-y-8">
-            {/* Hero text */}
-            <div className="max-w-2xl py-4 space-y-2">
-              <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl">
+          <div className="space-y-8 animate-fade">
+            <div className="max-w-2xl">
+              <h2 className="text-xl font-bold tracking-tight text-slate-900 mb-2">
                 {t.heroTitle}
-              </h1>
-              <p className="text-base text-slate-500 font-normal leading-relaxed">
+              </h2>
+              <p className="text-sm text-slate-500 leading-relaxed font-normal">
                 {t.heroSub}
               </p>
             </div>
 
-            {/* Privacy notice banner */}
-            <div className="p-3 bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2.5 rounded-sm">
-              <Info size={16} className="text-slate-500 shrink-0 mt-0.5" />
-              <span>{t.privacyNotice}</span>
-            </div>
-
-            {/* Action headers */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h2 className="font-bold text-slate-900 text-lg">Active Legislative Gazette Bills</h2>
-              <button
+            <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Available Legislation Documents</span>
+              <button 
                 onClick={() => setUploadOpen(true)}
-                className="flex items-center gap-1.5 text-xs font-bold text-brand hover:underline"
+                className="bg-indigo-950 hover:bg-indigo-900 text-white px-3 py-1.5 rounded-sm text-[10px] uppercase tracking-wider font-bold flex items-center gap-1.5 shadow-sm"
               >
-                <Upload size={14} />
-                {t.uploadTitle}
+                <Upload className="w-3.5 h-3.5" />
+                Ingest New Bill
               </button>
             </div>
 
-            {/* Bill cards loop (Phase 1 preloaded cards) */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {bills.map((b) => (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {bills.map((bill) => (
                 <div 
-                  key={b.id}
-                  onClick={() => selectBill(b)}
-                  className="group bg-white border border-slate-200 hover:border-brand-light p-5 transition-all duration-200 cursor-pointer rounded-sm flex flex-col justify-between hover:shadow-minimal"
+                  key={bill.id}
+                  onClick={() => selectBill(bill)}
+                  className="border border-slate-200 bg-white p-5 rounded-sm hover:border-slate-300 transition-all cursor-pointer flex flex-col justify-between h-48 group shadow-sm"
                 >
                   <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-semibold text-brand tracking-wider uppercase">Gazette Ingested</span>
-                      <ChevronRight size={14} className="text-slate-300 group-hover:text-brand" />
+                    <div className="flex justify-between items-start mb-2 gap-2">
+                      <span className="text-[10px] font-bold text-indigo-950 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-sm uppercase tracking-wider font-mono">
+                        {bill.category}
+                      </span>
+                      <ReadingTime minutes={bill.reading_time} />
                     </div>
-                    <h3 className="font-bold text-slate-900 text-base mt-2 group-hover:text-brand transition-colors">
-                      {b.title}
+                    <h3 className="text-sm font-bold text-slate-800 tracking-tight group-hover:text-brand mb-1">
+                      {bill.title}
                     </h3>
-                    <p className="text-xs text-slate-500 mt-2 font-normal leading-relaxed">
-                      {b.summary}
+                    <p className="text-[11px] text-slate-500 leading-normal line-clamp-3">
+                      {bill.summary}
                     </p>
                   </div>
-                  <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
-                    <span>Source: Parliamentary Gazette</span>
-                    <span className="text-brand font-semibold hover:underline">Calculate →</span>
+
+                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 border-t border-slate-100 pt-3">
+                    <span>Stage: {bill.current_stage || "Introduced"}</span>
+                    <span className="text-brand group-hover:translate-x-1 transition-transform uppercase tracking-wider text-[9px]">
+                      Analyze →
+                    </span>
                   </div>
                 </div>
               ))}
@@ -992,397 +735,601 @@ export default function App() {
           </div>
         )}
 
-        {/* Bill calculation details page (Split panel - PDF on left, Inputs on right) */}
-        {activeTab === "bills" && selectedBill && (
-          <div className="space-y-6">
+        {/* Selected Bill detail workspace split */}
+        {selectedBill && activeTab === "bills" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[calc(100vh-10rem)]">
             
-            {/* Header back navigate */}
-            <div className="flex items-center justify-between">
+            {/* Left Column calculator panel */}
+            <div className="flex flex-col gap-6 overflow-y-auto pr-2 scrollbar-thin">
+              
+              {/* Back navigation */}
               <button 
-                onClick={() => { setSelectedBill(null); setResult(null); }}
-                className="text-xs font-bold text-slate-600 hover:text-brand flex items-center gap-1"
+                onClick={() => setSelectedBill(null)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 uppercase tracking-wider self-start"
               >
                 {t.backToDashboard}
               </button>
 
-              {selectedBill.source_url && (
-                <a
-                  href={selectedBill.source_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs text-brand hover:underline flex items-center gap-1.5 font-medium"
-                >
-                  <FileText size={14} />
-                  Original Gazette PDF
-                </a>
+              {/* Bill Details Title Header */}
+              <div>
+                <h2 className="text-lg font-bold tracking-tight text-slate-900 mb-1">
+                  {selectedBill.title}
+                </h2>
+                <p className="text-xs text-slate-500 leading-relaxed font-normal">
+                  {selectedBill.summary}
+                </p>
+              </div>
+
+              {/* Metadata Panel */}
+              <Metadata metadata={billMeta} loading={metaLoading} error={metaError} />
+
+              {/* Legislative Timeline Stages */}
+              <Timeline stages={timeline} loading={timelineLoading} error={timelineError} />
+
+              {/* Profile Autofill selector (if user logged in) */}
+              {token && savedProfiles.length > 0 && (
+                <div className="border border-slate-200 p-4 rounded-sm bg-white shadow-sm flex items-center justify-between gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                      Select Encrypted Entity Profile
+                    </label>
+                    <span className="text-xs font-semibold text-slate-700">Auto-fill values from saved records</span>
+                  </div>
+                  <select 
+                    value={activeProfileId}
+                    onChange={(e) => handleProfileSelect(e.target.value)}
+                    className="border border-slate-200 text-xs font-semibold p-1.5 rounded-sm focus:outline-none"
+                  >
+                    <option value="">-- Choose Profile --</option>
+                    {savedProfiles.map(p => (
+                      <option key={p.id} value={p.id.toString()}>{p.display_name}</option>
+                    ))}
+                  </select>
+                </div>
               )}
-            </div>
 
-            {/* Bill Summary */}
-            <div className="border border-slate-200 bg-white p-4 rounded-sm">
-              <h2 className="font-bold text-slate-900 text-lg mb-1">{selectedBill.title}</h2>
-              <p className="text-xs text-slate-500 leading-relaxed font-normal">{selectedBill.summary}</p>
-            </div>
+              {/* Dynamic Profiles Comparisons Deck */}
+              {token && comparisons.length > 0 && (
+                <ComparisonGrid 
+                  comparisons={comparisons}
+                  activeProfileId={Number(activeProfileId)}
+                  onSelectProfile={handleProfileSelect}
+                  onAddProfile={() => setActiveTab("profiles")}
+                />
+              )}
 
-            {/* Main panels columns */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              
-              {/* Left Column: PDF viewer (collapsible on mobile, side-by-side desktop) */}
-              <div className="lg:col-span-6 space-y-4">
-                <div className="border border-slate-200 bg-white rounded-sm overflow-hidden">
-                  <div className="px-4 py-2 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-700">Official Legislative Draft Preview</span>
-                    <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-sm">
-                      Interactive Highlighter Active
-                    </span>
-                  </div>
-                  <PDFViewer
-                    pdfUrl={`${API_BASE_URL}/api/bills/pdf/${selectedBill.pdf_path}`}
-                    highlight={selectedRule?.source_span}
-                  />
-                </div>
-              </div>
-
-              {/* Right Column: Profile input & results outcome */}
-              <div className="lg:col-span-6 space-y-6">
+              {/* Personal Financial Profile Inputs Form */}
+              <div className="border border-slate-200 p-5 rounded-sm bg-white shadow-sm space-y-4">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-1.5 block">
+                  Simulate Financial Profile Inputs
+                </h3>
                 
-                {/* Profile Form card */}
-                <div className="border border-slate-200 bg-white p-6 rounded-sm">
-                  <h3 className="font-bold text-slate-900 text-sm mb-4">Enter Financial Profile</h3>
-                  
-                  {/* Active profile filler dropdown */}
-                  {token && savedProfiles.length > 0 && (
-                    <div className="mb-4">
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        {t.savedProfiles}
-                      </label>
-                      <select
-                        value={activeProfileId}
-                        onChange={handleProfileSelect}
-                        className="w-full text-xs border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm bg-slate-50"
-                      >
-                        <option value="">Select profile to auto-fill...</option>
-                        {savedProfiles.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  <form onSubmit={calculateImpact} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">{t.annualIncome}</label>
-                        <input
-                          type="number"
-                          name="annual_income"
-                          required
-                          value={profileForm.annual_income}
-                          onChange={handleInputChange}
-                          className="w-full text-sm border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">{t.age}</label>
-                        <input
-                          type="number"
-                          name="age"
-                          required
-                          value={profileForm.age}
-                          onChange={handleInputChange}
-                          className="w-full text-sm border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">{t.taxRegime}</label>
-                        <select
-                          name="tax_regime"
-                          value={profileForm.tax_regime}
-                          onChange={handleInputChange}
-                          className="w-full text-sm border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm bg-white"
-                        >
-                          <option value="new">{t.newRegime}</option>
-                          <option value="old">{t.oldRegime}</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">{t.employmentCategory}</label>
-                        <select
-                          name="employment_category"
-                          value={profileForm.employment_category}
-                          onChange={handleInputChange}
-                          className="w-full text-sm border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm bg-white"
-                        >
-                          <option value="salaried">{t.salaried}</option>
-                          <option value="business">{t.business}</option>
-                          <option value="professional">{t.professional}</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">{t.state}</label>
-                        <select
-                          name="state"
-                          value={profileForm.state}
-                          onChange={handleInputChange}
-                          className="w-full text-sm border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm bg-white"
-                        >
-                          {STATES.map(s => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </div>
-                      {/* Show LTCG field if selected bill is Capital Gains */}
-                      {(selectedBill.title.toLowerCase().includes("gains") || selectedBill.summary.toLowerCase().includes("gains")) && (
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">{t.equityGains}</label>
-                          <input
-                            type="number"
-                            name="equity_ltsg"
-                            value={profileForm.equity_ltsg}
-                            onChange={handleInputChange}
-                            className="w-full text-sm border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2">
-                      <div className="flex items-center">
-                        <input
-                          id="save_session"
-                          name="save_session"
-                          type="checkbox"
-                          checked={profileForm.save_session}
-                          onChange={handleInputChange}
-                          className="h-4 w-4 text-brand focus:ring-brand border-slate-300 rounded-sm"
-                        />
-                        <label htmlFor="save_session" className="ml-2 block text-xs text-slate-500">
-                          {t.saveSession}
-                        </label>
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={calculating}
-                      className="w-full text-xs font-bold bg-brand-dark text-white py-2.5 rounded-sm hover:bg-brand transition-colors disabled:opacity-50"
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Regime */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {t.taxRegime}
+                    </label>
+                    <select
+                      name="tax_regime"
+                      value={profileForm.tax_regime}
+                      onChange={handleInputChange}
+                      className="border border-slate-200 p-2 rounded-sm text-xs font-semibold focus:outline-none focus:border-brand"
                     >
-                      {calculating ? t.calculating : t.calculateButton}
-                    </button>
-                  </form>
+                      <option value="new">{t.newRegime}</option>
+                      <option value="old">{t.oldRegime}</option>
+                    </select>
+                  </div>
 
-                  {/* Profile Encryption save option (Phase 3) */}
-                  {token && (
-                    <form onSubmit={handleSaveProfile} className="mt-6 pt-6 border-t border-slate-100 flex items-center gap-3">
-                      <input
-                        type="text"
-                        required
-                        value={profileName}
-                        onChange={(e) => setProfileName(e.target.value)}
-                        placeholder="Name: e.g. My Business, Family"
-                        className="text-xs border border-slate-200 p-2 focus:outline-none focus:border-brand rounded-sm flex-1"
-                      />
-                      <button
-                        type="submit"
-                        className="text-xs font-semibold border border-brand text-brand px-3 py-2 rounded-sm hover:bg-indigo-50"
-                      >
-                        Secure Save Profile
-                      </button>
-                    </form>
+                  {/* Employment Category */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {t.employmentCategory}
+                    </label>
+                    <select
+                      name="employment_category"
+                      value={profileForm.employment_category}
+                      onChange={handleInputChange}
+                      className="border border-slate-200 p-2 rounded-sm text-xs font-semibold focus:outline-none focus:border-brand"
+                    >
+                      <option value="salaried">{t.salaried}</option>
+                      <option value="business">{t.business}</option>
+                      <option value="professional">{t.professional}</option>
+                    </select>
+                  </div>
+
+                  {/* Age */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {t.age}
+                    </label>
+                    <input
+                      type="number"
+                      name="age"
+                      value={profileForm.age}
+                      onChange={handleInputChange}
+                      className="border border-slate-200 p-2 rounded-sm text-xs font-semibold focus:outline-none focus:border-brand"
+                    />
+                  </div>
+
+                  {/* State */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {t.state}
+                    </label>
+                    <select
+                      name="state"
+                      value={profileForm.state}
+                      onChange={handleInputChange}
+                      className="border border-slate-200 p-2 rounded-sm text-xs font-semibold focus:outline-none focus:border-brand"
+                    >
+                      {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Capital Gains (Equity LTSG) */}
+                {selectedBill.category?.toLowerCase().includes("capital") && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {t.equityGains}
+                    </label>
+                    <input
+                      type="number"
+                      name="equity_ltsg"
+                      value={profileForm.equity_ltsg}
+                      onChange={handleInputChange}
+                      className="border border-slate-200 p-2 rounded-sm text-xs font-semibold focus:outline-none focus:border-brand"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Slider Controller (Renders slider directly below result panels) */}
+              <IncomeSlider 
+                value={profileForm.annual_income}
+                onChange={(val) => {
+                  setProfileForm(prev => {
+                    const updated = { ...prev, annual_income: val };
+                    if (updated.save_session) {
+                      localStorage.setItem("vidhi_session_inputs", JSON.stringify(updated));
+                    }
+                    return updated;
+                  });
+                }}
+              />
+
+              {/* Rupee Impact Result Card */}
+              <div className="border border-slate-200 bg-white p-5 rounded-sm shadow-sm space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {t.resultHeading}
+                  </h3>
+                  
+                  {token && activeProfileId && (
+                    <button 
+                      onClick={saveSimulationRecord}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1 rounded-sm border border-slate-200 text-[10px] font-bold uppercase tracking-wider"
+                    >
+                      Save Simulation Log
+                    </button>
                   )}
                 </div>
 
-                {/* Shimmer skeleton screen calculation loader */}
-                {calculating && (
-                  <div className="border border-slate-200 bg-white p-6 rounded-sm space-y-4">
-                    <div className="h-6 w-1/3 animate-shimmer rounded-sm"></div>
-                    <div className="h-16 w-full animate-shimmer rounded-sm"></div>
-                    <div className="h-4 w-5/6 animate-shimmer rounded-sm"></div>
-                    <div className="h-4 w-4/6 animate-shimmer rounded-sm"></div>
-                  </div>
-                )}
+                <div className="flex items-center gap-4">
+                  {/* Rupee animated value counter */}
+                  <AnimatedImpact value={impact} className="text-4xl" />
+                  
+                  {hasComplianceAlert && (
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-sm uppercase tracking-wider">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Compliance Risk
+                    </span>
+                  )}
+                </div>
 
-                {/* Results block (Phase 1 animated output + citations) */}
-                {result && !calculating && (
-                  <div className="space-y-6">
-                    
-                    {/* Rupee payoff outcome card */}
-                    <div className="border border-slate-200 bg-white p-6 rounded-sm text-center relative overflow-hidden">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-                        {t.resultHeading}
-                      </span>
-                      
-                      {/* Big single payoff number */}
-                      <RupeeCounter
-                        value={result.total_impact}
-                        className={`text-5xl font-extrabold tracking-tight block ${
-                          result.total_impact > 0 
-                            ? "text-savings" 
-                            : result.total_impact < 0 
-                              ? "text-cost" 
-                              : "text-slate-500"
-                        }`}
-                      />
-
-                      <p className="text-xs font-medium text-slate-700 mt-4 leading-relaxed max-w-md mx-auto">
-                        {getTranslatedExplanation(result.explanation)}
-                      </p>
-                    </div>
-
-                    {/* Comparison Card View (Phase 2) */}
-                    {result.triggered_rules && result.triggered_rules.some(r => r.rule_type === "standard_deduction" || r.rule_type === "tax_slab" || r.rule_type === "capital_gains") && (
-                      <div className="border border-slate-200 bg-white p-5 rounded-sm">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-3">
-                          {t.comparisonTitle}
+                {/* Explanation text translations */}
+                <div className="text-xs leading-relaxed text-slate-600 border-l-2 border-brand pl-3 py-1 space-y-1 bg-slate-50 rounded-r-sm pr-2">
+                  <span className="font-bold text-slate-800 block uppercase tracking-wide text-[9px] mb-1">
+                    Trace Calculations explanations:
+                  </span>
+                  {trace.map((line, idx) => (
+                    <div key={idx} className="font-medium text-slate-700">
+                      {highlightTerms(getTranslatedExplanation(line), (term, termIdx) => (
+                        <span 
+                          key={termIdx}
+                          className="underline decoration-dotted decoration-brand cursor-help relative group inline-block font-semibold text-slate-800"
+                          onMouseEnter={(e) => {
+                            const rect = e.target.getBoundingClientRect();
+                            setTooltipPos({
+                              top: e.target.offsetTop + e.target.offsetHeight + 4,
+                              left: e.target.offsetLeft
+                            });
+                            fetchTerm(term);
+                            setShowTooltip(true);
+                          }}
+                          onMouseLeave={clearTerm}
+                        >
+                          {term}
                         </span>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                          {/* Old rule visual card */}
-                          <div className="border border-slate-100 p-4 bg-slate-50 text-slate-600 rounded-sm">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                              {t.oldRule}
-                            </span>
-                            <div className="text-xs font-normal">
-                              {result.triggered_rules.map((r, idx) => {
-                                if (r.rule_type === "standard_deduction") {
-                                  return <div key={idx}>Standard Deduction: ₹50,000</div>;
-                                }
-                                if (r.rule_type === "tax_slab") {
-                                  return <div key={idx}>Tax Slabs: Older 5% slab starts from ₹3,00,000 up to ₹6,00,000.</div>;
-                                }
-                                if (r.rule_type === "capital_gains") {
-                                  return <div key={idx}>LTCG Rate: 10% (Exemption Limit: ₹1,00,000)</div>;
-                                }
-                                return null;
-                              })}
-                            </div>
-                          </div>
-
-                          {/* New rule visual card */}
-                          <div className="border border-slate-200 p-4 bg-white text-slate-800 rounded-sm relative">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-brand block mb-1">
-                              {t.newRule}
-                            </span>
-                            <div className="text-xs font-semibold">
-                              {result.triggered_rules.map((r, idx) => {
-                                if (r.rule_type === "standard_deduction") {
-                                  return <div key={idx} className="text-savings">Standard Deduction: ₹75,000</div>;
-                                }
-                                if (r.rule_type === "tax_slab") {
-                                  return <div key={idx} className="text-savings">Tax Slabs: Revised 5% slab expanded from ₹3,00,000 up to ₹7,00,000.</div>;
-                                }
-                                if (r.rule_type === "capital_gains") {
-                                  return <div key={idx} className="text-cost">LTCG Rate: 12.5% (Exemption Limit: ₹1,25,000)</div>;
-                                }
-                                return null;
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Citations panel with scroll-to link */}
-                    <div className="border border-slate-200 bg-white p-5 rounded-sm">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-3">
-                        {t.citationHeading}
-                      </span>
-                      
-                      <div className="space-y-3">
-                        {result.triggered_rules.map((r) => (
-                          <div 
-                            key={r.id}
-                            onClick={() => setSelectedRule(r)}
-                            className={`p-3 border transition-colors cursor-pointer rounded-sm ${
-                              selectedRule?.id === r.id 
-                                ? "border-brand bg-slate-50" 
-                                : "border-slate-100 hover:border-slate-300"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-slate-900">{r.clause_number}</span>
-                              <span className="text-[9px] text-slate-400">Page {r.source_span.page}  |  Click to view</span>
-                            </div>
-                            
-                            {/* Legal clause quote */}
-                            <blockquote className="text-xs italic text-slate-600 mt-2 border-l border-slate-300 pl-2">
-                              "{r.clause_text}"
-                            </blockquote>
-                            
-                            {/* Math translation info */}
-                            <div className="mt-2 flex items-center gap-1 text-[10px] text-brand-light font-medium">
-                              <CheckCircle2 size={12} />
-                              <span>Calculated mathematically from formula variables</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      ))}
                     </div>
-
-                    {/* Social Share Card (Phase 2) */}
-                    <div className="border border-slate-200 bg-white p-5 rounded-sm">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-3">
-                        {t.shareTitle}
-                      </span>
-                      
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center">
-                          <input
-                            id="blur_impact"
-                            type="checkbox"
-                            checked={blurExactAmount}
-                            onChange={(e) => setBlurExactAmount(e.target.checked)}
-                            className="h-4 w-4 text-brand focus:ring-brand border-slate-300 rounded-sm"
-                          />
-                          <label htmlFor="blur_impact" className="ml-2 text-xs text-slate-600">
-                            {t.blurImpact}
-                          </label>
-                        </div>
-                        <button
-                          onClick={downloadShareCard}
-                          className="flex items-center justify-center gap-2 text-xs font-bold border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-sm text-slate-700"
-                        >
-                          <Download size={14} />
-                          {t.downloadCard}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Non-intrusive call to action sign-up (Phase 1 CTA) */}
-                    {!token && (
-                      <div className="p-4 bg-slate-50 border border-slate-200 text-xs flex items-center justify-between rounded-sm">
-                        <span className="text-slate-600">{t.noAccount}</span>
-                        <button 
-                          onClick={() => setActiveTab("auth")}
-                          className="text-brand font-bold hover:underline flex items-center gap-0.5"
-                        >
-                          {t.createFreeAccount}
-                          <ChevronRight size={14} />
-                        </button>
-                      </div>
-                    )}
-
-                  </div>
-                )}
-
+                  ))}
+                </div>
               </div>
+
+              {/* Impact Breakdown Bars */}
+              <BreakdownBars breakdown={breakdown} totalImpact={impact} />
+
+              {/* Rule Match Grounding counter */}
+              <RuleMatch matchedRules={matchedRules} />
+
+              {/* Social Share generator panel */}
+              <div className="border border-slate-200 bg-white p-5 rounded-sm shadow-sm space-y-4">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {t.shareTitle}
+                </h3>
+                
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={downloadShareCard}
+                    className="bg-indigo-950 hover:bg-indigo-900 text-white px-4 py-2 rounded-sm text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {t.downloadCard}
+                  </button>
+
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      checked={blurExactAmount}
+                      onChange={(e) => setBlurExactAmount(e.target.checked)}
+                      className="rounded border-slate-300 text-indigo-900 focus:ring-brand w-3.5 h-3.5"
+                    />
+                    <span>{t.blurImpact}</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Source Citations panels */}
+              <div className="space-y-4">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-1.5 block">
+                  {t.citationHeading}
+                </h3>
+                
+                <div className="flex flex-col gap-4">
+                  {selectedBill.rules.map((rule) => {
+                    const isActive = selectedRuleId === rule.id;
+                    return (
+                      <CitationCard
+                        key={rule.id}
+                        rule={rule}
+                        isActive={isActive}
+                        onClickHighlight={(span) => {
+                          setSelectedRuleId(rule.id);
+                          setActiveRuleHighlight(span);
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Right Column PDF canvas split */}
+            <div className="border border-slate-200 bg-slate-100 rounded-sm relative h-full flex flex-col shadow-inner">
+              <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between text-xs font-bold text-slate-800">
+                <span className="flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-slate-400" />
+                  Original Gazette Document PDF
+                </span>
+                {selectedBill.source_url && (
+                  <a 
+                    href={selectedBill.source_url} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="text-brand hover:underline font-bold uppercase tracking-wider text-[10px]"
+                  >
+                    View Official Source
+                  </a>
+                )}
+              </div>
+
+              <div className="flex-1 overflow-hidden relative bg-slate-200 p-2">
+                <PDFViewer 
+                  pdfUrl={getPDFURL()} 
+                  highlightSpan={activeRuleHighlight}
+                />
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* Tab 2: User Profiles CRUD */}
+        {activeTab === "profiles" && (
+          <div className="max-w-2xl mx-auto border border-slate-200 bg-white p-6 rounded-sm shadow-sm space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">
+                  Manage Encrypted Entity Profiles
+                </h2>
+                <p className="text-[11px] text-slate-400 lowercase tracking-normal">
+                  profiles are AES-256 encrypted at rest on server databases.
+                </p>
+              </div>
+              
+              <button 
+                onClick={saveProfile}
+                className="bg-indigo-950 hover:bg-indigo-900 text-white px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider"
+              >
+                Create New Profile
+              </button>
+            </div>
+
+            {savedProfiles.length === 0 ? (
+              <div className="text-xs text-slate-400 py-6 text-center italic border border-dashed border-slate-200 rounded-sm">
+                No profiles saved yet. Click 'Create New Profile' to add family members or company accounts.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {savedProfiles.map(p => (
+                  <div key={p.id} className="border border-slate-200 p-4 rounded-sm flex items-center justify-between bg-slate-50">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold text-slate-800">{p.display_name}</span>
+                        {p.default_profile && <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[8px] font-bold px-1 rounded-sm uppercase tracking-wider">Default</span>}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-medium">
+                        Income: <span className="font-mono font-semibold">₹{p.profile_data.annual_income.toLocaleString('en-IN')}</span> | Regime: <span className="uppercase">{p.profile_data.tax_regime}</span> | Category: <span className="capitalize">{p.profile_data.employment_category}</span>
+                      </div>
+                    </div>
+                    
+                    <button 
+                      onClick={() => deleteProfile(p.id)}
+                      className="text-slate-400 hover:text-rose-600 transition-colors"
+                      title="Delete profile"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="border-t border-slate-100 pt-6">
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Account Administration</h3>
+              <button 
+                onClick={handleDeleteAccount}
+                className="text-rose-600 hover:text-rose-800 text-[10px] font-bold uppercase tracking-wider border border-rose-200 hover:border-rose-300 px-3 py-1.5 rounded-sm bg-rose-50"
+              >
+                Delete User Account & Scrub Data
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: History Timeline */}
+        {activeTab === "calc_history" && (
+          <div className="max-w-2xl mx-auto border border-slate-200 bg-white p-6 rounded-sm shadow-sm space-y-6">
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900 mb-1">
+                Simulations Logging History
+              </h2>
+              <p className="text-[11px] text-slate-400 font-normal leading-normal">
+                Audit logs of tax simulations and compliance calculation matches saved to your account.
+              </p>
+            </div>
+
+            {simHistory.length === 0 ? (
+              <div className="text-xs text-slate-400 py-6 text-center italic border border-dashed border-slate-200 rounded-sm font-normal">
+                No simulations logged yet. Go to a bill details page and click 'Save Simulation Log' to append entries.
+              </div>
+            ) : (
+              <div className="relative border-l-2 border-indigo-950/20 pl-6 space-y-6">
+                {simHistory.map((item, idx) => (
+                  <div key={item.id} className="relative">
+                    <span className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-brand border border-white"></span>
+                    <div className="text-[10px] text-slate-400 font-mono font-medium mb-1">
+                      {new Date(item.created_at).toLocaleString()}
+                    </div>
+                    <div className="border border-slate-200 p-4 rounded-sm bg-slate-50">
+                      <div className="flex justify-between items-start mb-2 gap-2">
+                        <h4 className="text-xs font-bold text-slate-800">{item.bill_title}</h4>
+                        <span className={`text-xs font-bold font-mono ${item.calculated_impact >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {item.calculated_impact >= 0 ? '+' : ''}₹{item.calculated_impact.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 font-medium leading-relaxed whitespace-pre-line">
+                        {getTranslatedExplanation(item.explanation)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 4: Auth Forms */}
+        {activeTab === "auth" && (
+          <div className="max-w-md mx-auto border border-slate-200 bg-white p-6 rounded-sm shadow-sm space-y-6">
+            <div className="text-center">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900 mb-1">
+                {authForm.isSignUp ? "Create a secure account" : "Sign In to VidhiVyakhya"}
+              </h2>
+              <p className="text-[11px] text-slate-400 lowercase tracking-normal">
+                {authForm.isSignUp ? "store family profiles using AES-256 server encryption" : "access logged histories and comparison cards decks"}
+              </p>
+            </div>
+
+            <form onSubmit={handleAuth} className="space-y-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Email Address</label>
+                <input 
+                  type="email"
+                  required
+                  value={authForm.email}
+                  onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                  placeholder="name@example.com"
+                  className="border border-slate-200 p-2 rounded-sm text-xs font-semibold focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Password</label>
+                <input 
+                  type="password"
+                  required
+                  value={authForm.password}
+                  onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                  placeholder="••••••••"
+                  className="border border-slate-200 p-2 rounded-sm text-xs font-semibold focus:outline-none"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full bg-indigo-950 hover:bg-indigo-900 text-white py-2 rounded-sm text-[10px] uppercase font-bold tracking-wider"
+              >
+                {authForm.isSignUp ? "Sign Up" : "Sign In"}
+              </button>
+            </form>
+
+            <div className="text-center border-t border-slate-100 pt-4">
+              <button 
+                onClick={() => setAuthForm({ ...authForm, isSignUp: !authForm.isSignUp })}
+                className="text-brand hover:underline text-[10px] font-bold uppercase tracking-wider"
+              >
+                {authForm.isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+              </button>
             </div>
           </div>
         )}
 
       </main>
 
-      {/* Footer copyright */}
-      <footer className="border-t border-slate-100 py-6 bg-white text-center text-xs text-slate-400">
-        <div>© 2026 VidhiVyakhya. Indian Parliamentary Gazette Financial Calculations Engine.</div>
-        <div className="mt-1">All data processed in sandbox. Self-supplied API keys remain in browser memory.</div>
+      {/* 3. Footer Privacy Warning */}
+      <footer className="border-t border-slate-200 bg-white py-4 text-center text-[10px] font-medium text-slate-400">
+        <div className="max-w-7xl mx-auto px-4">
+          {t.privacyNotice}
+        </div>
       </footer>
+
+      {/* Settings Modal (Gemini Key) */}
+      {settingsOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 p-6 max-w-md w-full rounded-sm shadow-xl space-y-4 animate-scale">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                <Settings className="w-4 h-4 text-slate-400" />
+                {t.apiSettingsTitle}
+              </h3>
+              <button onClick={() => setSettingsOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={saveSettings} className="space-y-4">
+              <p className="text-[10px] text-slate-400 leading-normal font-normal">
+                {t.apiKeyNote}
+              </p>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={t.apiPlaceholder}
+                className="w-full border border-slate-200 p-2 text-xs font-mono rounded-sm focus:outline-none"
+              />
+              <button 
+                type="submit"
+                className="w-full bg-indigo-950 hover:bg-indigo-900 text-white py-2 rounded-sm text-[10px] uppercase font-bold tracking-wider"
+              >
+                Save Settings
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Ingest Bill Modal */}
+      {uploadOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 p-6 max-w-md w-full rounded-sm shadow-xl space-y-4 animate-scale">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                <Upload className="w-4 h-4 text-slate-400" />
+                {t.uploadTitle}
+              </h3>
+              <button onClick={() => setUploadOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleUpload} className="space-y-4">
+              <p className="text-[10px] text-slate-400 leading-normal font-normal">
+                {t.uploadNote}
+              </p>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Bill Title</label>
+                <input 
+                  type="text"
+                  required
+                  value={uploadForm.title}
+                  onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
+                  placeholder="e.g. Finance Bill 2026"
+                  className="border border-slate-200 p-2 rounded-sm text-xs font-semibold focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Brief Summary</label>
+                <textarea 
+                  required
+                  rows="2"
+                  value={uploadForm.summary}
+                  onChange={(e) => setUploadForm({ ...uploadForm, summary: e.target.value })}
+                  placeholder="Grounded summaries points..."
+                  className="border border-slate-200 p-2 rounded-sm text-xs font-semibold focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Official Link (Source URL)</label>
+                <input 
+                  type="url"
+                  value={uploadForm.source_url}
+                  onChange={(e) => setUploadForm({ ...uploadForm, source_url: e.target.value })}
+                  placeholder="https://..."
+                  className="border border-slate-200 p-2 rounded-sm text-xs font-semibold focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Parliament Gazette PDF</label>
+                <input 
+                  type="file"
+                  required
+                  accept=".pdf"
+                  onChange={(e) => setUploadFile(e.target.files[0])}
+                  className="text-xs font-medium"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                disabled={uploading}
+                className="w-full bg-indigo-950 hover:bg-indigo-900 text-white py-2 rounded-sm text-[10px] uppercase font-bold tracking-wider disabled:opacity-50"
+              >
+                {uploading ? "Ingesting rules..." : "Start Ingestion"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

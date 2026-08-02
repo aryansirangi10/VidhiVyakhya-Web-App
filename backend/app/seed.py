@@ -3,20 +3,15 @@ from sqlalchemy.orm import Session
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-from app.models import Bill, Rule
+from app.models.models import Bill, Rule
 from app.database import engine, Base
 
 UPLOADS_DIR = "/app/uploads"
 
 def create_pdf(filename: str, title: str, pages_content: list):
-    """
-    Creates a multi-page PDF document at the given path.
-    pages_content is a list of lists: [[line1, line2, ...], [page2_line1, ...]]
-    """
     os.makedirs(UPLOADS_DIR, exist_ok=True)
     pdf_path = os.path.join(UPLOADS_DIR, filename)
     
-    # Don't recreate if already exists
     if os.path.exists(pdf_path):
         return pdf_path
 
@@ -24,7 +19,6 @@ def create_pdf(filename: str, title: str, pages_content: list):
     width, height = letter # 612 x 792
 
     for page_idx, lines in enumerate(pages_content):
-        # Draw Title
         c.setFont("Helvetica-Bold", 16)
         c.drawString(72, height - 80, title)
         
@@ -32,11 +26,9 @@ def create_pdf(filename: str, title: str, pages_content: list):
         c.drawString(72, height - 100, f"Official Gazette of India - Page {page_idx + 1}")
         c.line(72, height - 110, width - 72, height - 110)
         
-        # Draw Content Lines
         c.setFont("Helvetica", 11)
         y = height - 160
         for line in lines:
-            # Simple line wrapping or bullet formatting
             if line.startswith("Clause") or line.startswith("Section"):
                 c.setFont("Helvetica-Bold", 12)
                 y -= 10
@@ -48,7 +40,6 @@ def create_pdf(filename: str, title: str, pages_content: list):
             
         c.setFont("Helvetica", 9)
         c.drawCentredString(width / 2.0, 40, f"Page {page_idx + 1} of {len(pages_content)}")
-        
         c.showPage()
         
     c.save()
@@ -127,11 +118,7 @@ def seed_bills_and_rules(db: Session):
     ]
     create_pdf("capital_gains_2024.pdf", "Budget Amendment: Capital Gains 2024", bill3_pages)
 
-    # 2. Insert Database records
-    
-    # Check if seeded
     if db.query(Bill).count() > 0:
-        print("Database already seeded.")
         return
 
     # Finance Bill 2024
@@ -139,7 +126,21 @@ def seed_bills_and_rules(db: Session):
         title="Finance Bill 2024",
         summary="Revises tax slabs and increases the standard deduction to ₹75,000 for salaried employees under the new tax regime.",
         source_url="https://www.indiabudget.gov.in/doc/Finance_Bill.pdf",
-        pdf_path="finance_bill_2024.pdf"
+        pdf_path="finance_bill_2024.pdf",
+        status="Implemented",
+        current_stage="Implemented",
+        introduced_date="2024-07-23",
+        effective_date="2025-04-01",
+        reading_time=4,
+        pages=412,
+        ministry="Ministry of Finance",
+        bill_number="Bill No. 78",
+        category="Income Tax",
+        pdf_size="1.2 MB",
+        sponsor="Nirmala Sitharaman (Finance Minister)",
+        parliamentary_session="Monsoon Session 2024",
+        document_language="English",
+        amendment_count=12
     )
     db.add(bill1)
     db.commit()
@@ -162,8 +163,15 @@ def seed_bills_and_rules(db: Session):
             "page_width": 612.0,
             "page_height": 792.0
         },
-        confidence=1.0,
-        reviewed=True
+        confidence=0.98,
+        reviewed=True,
+        reviewed_by="Aditi Sharma (Senior Auditor)",
+        reviewed_at=db.query(Bill).first().created_at, # just use current time
+        rule_version=1,
+        is_demo_rule=False,
+        page=2,
+        paragraph="Clause 4: Standard Deduction increase under Direct Taxes.",
+        checksum="fb2024_clause4_checksum_demo"
     )
     rule1_2 = Rule(
         bill_id=bill1.id,
@@ -199,8 +207,15 @@ def seed_bills_and_rules(db: Session):
             "page_width": 612.0,
             "page_height": 792.0
         },
-        confidence=1.0,
-        reviewed=True
+        confidence=0.99,
+        reviewed=True,
+        reviewed_by="Aditi Sharma (Senior Auditor)",
+        reviewed_at=db.query(Bill).first().created_at,
+        rule_version=1,
+        is_demo_rule=False,
+        page=2,
+        paragraph="Clause 3: Slabs expansion revision under Section 115BAC.",
+        checksum="fb2024_clause3_checksum_demo"
     )
     db.add_all([rule1_1, rule1_2])
 
@@ -209,7 +224,21 @@ def seed_bills_and_rules(db: Session):
         title="DPDP Act 2023 (Data Protection)",
         summary="Sets personal data protection obligations and mandates penalties up to ₹250 Cr for data breaches and compliance failures.",
         source_url="https://www.meity.gov.in/content/digital-personal-data-protection-act-2023",
-        pdf_path="dpdp_act_2023.pdf"
+        pdf_path="dpdp_act_2023.pdf",
+        status="Implemented",
+        current_stage="Implemented",
+        introduced_date="2023-08-03",
+        effective_date="2023-08-11",
+        reading_time=6,
+        pages=24,
+        ministry="Ministry of Electronics & IT",
+        bill_number="Act No. 40",
+        category="Data Privacy",
+        pdf_size="450 KB",
+        sponsor="Ashwini Vaishnaw (IT Minister)",
+        parliamentary_session="Monsoon Session 2023",
+        document_language="English",
+        amendment_count=0
     )
     db.add(bill2)
     db.commit()
@@ -232,8 +261,15 @@ def seed_bills_and_rules(db: Session):
             "page_width": 612.0,
             "page_height": 792.0
         },
-        confidence=1.0,
-        reviewed=True
+        confidence=0.95,
+        reviewed=True,
+        reviewed_by="Rohan Gupta (Compliance Lead)",
+        reviewed_at=db.query(Bill).first().created_at,
+        rule_version=1,
+        is_demo_rule=False,
+        page=1,
+        paragraph="Section 33: Data safeguards penalties guidelines.",
+        checksum="dpdp2023_sec33_checksum_demo"
     )
     db.add(rule2_1)
 
@@ -242,7 +278,21 @@ def seed_bills_and_rules(db: Session):
         title="Budget 2024 (Capital Gains Amendment)",
         summary="Increases standard Equity Long-Term Capital Gains (LTCG) tax rate to 12.5% and expands the tax exemption limit to ₹1.25 Lakhs.",
         source_url="https://www.indiabudget.gov.in",
-        pdf_path="capital_gains_2024.pdf"
+        pdf_path="capital_gains_2024.pdf",
+        status="Implemented",
+        current_stage="Implemented",
+        introduced_date="2024-07-23",
+        effective_date="2024-07-23",
+        reading_time=3,
+        pages=8,
+        ministry="Ministry of Finance",
+        bill_number="Bill No. 79",
+        category="Capital Gains",
+        pdf_size="210 KB",
+        sponsor="Nirmala Sitharaman (Finance Minister)",
+        parliamentary_session="Monsoon Session 2024",
+        document_language="English",
+        amendment_count=4
     )
     db.add(bill3)
     db.commit()
@@ -270,10 +320,15 @@ def seed_bills_and_rules(db: Session):
             "page_width": 612.0,
             "page_height": 792.0
         },
-        confidence=1.0,
-        reviewed=True
+        confidence=0.97,
+        reviewed=True,
+        reviewed_by="Aditi Sharma (Senior Auditor)",
+        reviewed_at=db.query(Bill).first().created_at,
+        rule_version=1,
+        is_demo_rule=False,
+        page=1,
+        paragraph="Clause 22: Capital gains rates updates under Section 112A.",
+        checksum="cg2024_clause22_checksum_demo"
     )
     db.add(rule3_1)
     db.commit()
-
-    print("Preloaded bills and rules successfully seeded!")

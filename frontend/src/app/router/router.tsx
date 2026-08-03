@@ -18,6 +18,10 @@ const IntelligenceHome = lazy(() => import("../../features/intelligence/pages/In
 const CompareBillsPage = lazy(() => import("../../features/intelligence/pages/CompareBillsPage"));
 const UploadPage = lazy(() => import("../../features/upload/pages/UploadPage"));
 const PDFWorkspacePage = lazy(() => import("../../features/pdf/pages/PDFWorkspacePage"));
+const NotebookPage = lazy(() => import("../../features/notebook/pages/NotebookPage"));
+const ScenarioPage = lazy(() => import("../../features/simulator/pages/ScenarioPage"));
+const AIEvaluationPage = lazy(() => import("../../features/admin/pages/AIEvaluationPage"));
+const TerminalWorkspacePage = lazy(() => import("../../features/terminal/pages/TerminalWorkspacePage"));
 const LoginForm = lazy(() => import("../../features/auth/components/LoginForm/LoginForm"));
 const RegisterForm = lazy(() => import("../../features/auth/components/RegisterForm/RegisterForm"));
 
@@ -55,6 +59,10 @@ export function AppRouter() {
                 <Route path="/calculator" element={<CalculatorPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/assistant" element={<AssistantPanel />} />
+                <Route path="/notebook" element={<NotebookPage />} />
+                <Route path="/simulator" element={<ScenarioPage />} />
+                <Route path="/evaluation" element={<AIEvaluationPage />} />
+                <Route path="/terminal" element={<TerminalWorkspacePage />} />
                 <Route path="/onboarding" element={<OnboardingPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route

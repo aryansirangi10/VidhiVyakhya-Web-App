@@ -12,6 +12,7 @@ from app.auth import auth_router
 from app.dashboard import dashboard_router
 from app.api.v1 import search, notifications, admin, assistant
 from app.documents.routes import router as documents_router
+from app.ingestion.routes import router as upload_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,6 +38,7 @@ app.include_router(auth.router)
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(documents_router)
+app.include_router(upload_router)
 app.include_router(search.router)
 app.include_router(notifications.router)
 app.include_router(admin.router)

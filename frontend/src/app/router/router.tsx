@@ -16,6 +16,7 @@ const OnboardingPage = lazy(() => import("../../features/auth/pages/OnboardingPa
 const SettingsPage = lazy(() => import("../../features/auth/pages/SettingsPage"));
 const IntelligenceHome = lazy(() => import("../../features/intelligence/pages/IntelligenceHome"));
 const CompareBillsPage = lazy(() => import("../../features/intelligence/pages/CompareBillsPage"));
+const UploadPage = lazy(() => import("../../features/upload/pages/UploadPage"));
 const LoginForm = lazy(() => import("../../features/auth/components/LoginForm/LoginForm"));
 const RegisterForm = lazy(() => import("../../features/auth/components/RegisterForm/RegisterForm"));
 
@@ -46,6 +47,7 @@ export function AppRouter() {
                 <Route path="/bills/:id" element={<BillDetailPage />} />
                 <Route path="/intelligence" element={<IntelligenceHome />} />
                 <Route path="/documents" element={<IntelligenceHome />} />
+                <Route path="/upload" element={<UploadPage />} />
                 <Route path="/compare" element={<CompareBillsPage />} />
                 <Route path="/calculator" element={<CalculatorPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />

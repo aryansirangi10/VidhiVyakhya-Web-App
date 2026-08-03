@@ -2,26 +2,32 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Home,
-  BookOpen,
-  FileText,
+  UploadCloud,
+  FileSearch,
   Newspaper,
   Calculator,
   Bot,
   LayoutDashboard,
-  Star,
+  Terminal,
+  BookOpen,
+  Sliders,
+  Activity,
   Settings,
   Scale,
 } from "lucide-react";
 
 const navItems = [
   { label: "Home", href: "/", icon: <Home size={18} /> },
-  { label: "Bills Library", href: "/bills", icon: <BookOpen size={18} /> },
-  { label: "Documents", href: "/documents", icon: <FileText size={18} /> },
-  { label: "Intelligence", href: "/intelligence", icon: <Newspaper size={18} /> },
-  { label: "Impact Calculator", href: "/calculator", icon: <Calculator size={18} /> },
-  { label: "AI Workspace", href: "/assistant", icon: <Bot size={18} /> },
-  { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={18} /> },
-  { label: "Watchlist", href: "/watchlist", icon: <Star size={18} /> },
+  { label: "Upload Document", href: "/upload", icon: <UploadCloud size={18} /> },
+  { label: "PDF Workspace", href: "/pdf-workspace", icon: <FileSearch size={18} /> },
+  { label: "Intelligence Hub", href: "/intelligence", icon: <Newspaper size={18} /> },
+  { label: "Impact Lab", href: "/calculator", icon: <Calculator size={18} /> },
+  { label: "Scenario Simulator", href: "/simulator", icon: <Sliders size={18} /> },
+  { label: "Mission Control", href: "/dashboard", icon: <LayoutDashboard size={18} /> },
+  { label: "Live Terminal", href: "/terminal", icon: <Terminal size={18} /> },
+  { label: "AI Research", href: "/assistant", icon: <Bot size={18} /> },
+  { label: "AI Notebook", href: "/notebook", icon: <BookOpen size={18} /> },
+  { label: "AI Quality Audit", href: "/evaluation", icon: <Activity size={18} /> },
   { label: "Settings", href: "/settings", icon: <Settings size={18} /> },
 ];
 
@@ -44,14 +50,14 @@ export function Sidebar() {
       </div>
 
       {/* NAVIGATION ITEMS */}
-      <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5 scrollbar-thin">
+      <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1 scrollbar-thin">
         {navItems.map((item) => {
           const isActive = location.pathname === item.href || (item.href !== "/" && location.pathname.startsWith(item.href));
           return (
             <Link
               key={item.label}
               to={item.href}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-mono text-xs font-bold transition-all duration-200 ${
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl font-mono text-xs font-bold transition-all duration-200 ${
                 isActive
                   ? "bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-inner"
                   : "text-slate-400 hover:bg-slate-900 hover:text-slate-200"
